@@ -202,8 +202,34 @@ button:disabled { opacity: .5; cursor: default; }
 .detail .chart-meta { font-size: 12px; color: var(--fg-dim); margin-bottom: 10px; display: flex;
   gap: 18px; flex-wrap: wrap; }
 .detail .chart-meta b { color: var(--fg-strong); }
-.bigchart { width: 100%; height: 160px; }
+.bigchart-holder { position: relative; }
+.bigchart { width: 100%; height: auto; aspect-ratio: 880 / 188; display: block;
+  font-family: var(--sans); overflow: visible; }
 .chart-note { font-size: 11px; color: var(--fg-faint); margin-top: 8px; }
+
+/* in-SVG text (uses px values in the 880×188 viewBox user space) */
+.cc-title { font-size: 13px; font-weight: 800; fill: var(--fg-strong); letter-spacing: -.01em; }
+.cc-sub   { font-size: 10.5px; font-weight: 600; fill: var(--fg-faint); }
+.cc-yt    { font-size: 9.5px; font-weight: 600; fill: var(--fg-quiet);
+  font-variant-numeric: tabular-nums; }
+.cc-xt    { font-size: 10px; font-weight: 600; fill: var(--fg-faint); }
+.cc-vl    { font-size: 10px; font-weight: 800; fill: var(--fg-dim);
+  font-variant-numeric: tabular-nums; paint-order: stroke; stroke: #fff; stroke-width: 2.5px; }
+.cc-bar   { cursor: pointer; transition: opacity .1s ease; }
+.cc-bar:hover, .cc-bar.cc-hot { opacity: .82; }
+.cc-gap   { fill: #ef9aae; }
+
+/* floating value tooltip over the chart */
+.cc-tip { position: absolute; z-index: 5; pointer-events: none; min-width: 92px;
+  background: var(--fg-strong); color: #fff; border-radius: var(--radius-sm);
+  padding: 7px 10px; box-shadow: var(--shadow-lg); font-size: 12px; line-height: 1.35;
+  opacity: 0; transform: translateY(2px); transition: opacity .1s ease, transform .1s ease; }
+.cc-tip.show { opacity: 1; transform: translateY(0); }
+.cc-tip-d { font-size: 11px; font-weight: 600; color: #c8d2e0; margin-bottom: 2px; }
+.cc-tip-v { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.cc-tip-v span { font-size: 11px; font-weight: 600; color: #aeb9c9; }
+.cc-tip-r { font-size: 11px; color: #aeb9c9; font-variant-numeric: tabular-nums; margin-top: 1px; }
+.cc-tip-gap { font-size: 12px; font-weight: 700; color: #f3b6c5; }
 
 /* ---- docs ---- */
 .doc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);

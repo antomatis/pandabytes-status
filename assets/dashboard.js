@@ -61,7 +61,8 @@ function facetRow(s) {
   </div>`;
 
   if (clickable && isOpen) {
-    const chart = `<div class="bigchart-holder">${PB.columnChart(s.coverage_30d, color, unitLabel(s))}</div>`;
+    const metricName = s.key_metric_name || 'rows';
+    const chart = `<div class="bigchart-holder">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s))}</div>`;
     html += `<div class="detail" data-detail="${PB.esc(s.id)}">
       <div class="chart-wrap">
         <div class="chart-meta">
@@ -172,6 +173,9 @@ function wireBoard() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     };
   });
+
+  // wire the floating value tooltip on every open chart
+  board.querySelectorAll('.bigchart-holder').forEach(h => PB.wireChartTooltips(h));
 
   // facet row -> open/close column chart (only the ones flagged clickable)
   board.querySelectorAll('.facet.clickable[data-id]').forEach(r => {
