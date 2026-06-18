@@ -35,8 +35,9 @@
       <p>The hub exposes a small, <b>read-only</b> HTTP/JSON REST API designed for AI agents and
         dashboards. An API call <i>never</i> triggers an upstream fetch — it only reads the
         already-built catalog — so any query volume is safe and quota-free. This site is a static,
-        keyless front-end over that API: the <a href="index.html">dashboard</a> renders from a bundled
-        snapshot and live-refreshes when you paste a key.</p>
+        keyless front-end over that API: the <a href="index.html">dashboard</a> renders live from a
+        same-origin <code>/snapshot.json</code> and needs no key. The key-gated REST API below is for
+        agents, MCP clients, and programmatic dashboards.</p>
 
       <h3>Status &amp; kind enums</h3>
       <p>Every source has a <code>kind</code> and a freshness <code>status</code>:</p>
@@ -71,7 +72,8 @@
   "message": "approval link emailed to the operator; you'll receive your key once approved" } }</code></pre>
       <ol start="2">
         <li>The operator approves by email; your key is <b>emailed to you</b> (never returned in a body).</li>
-        <li>Save the key on the <a href="index.html">dashboard</a> (localStorage) or use it in requests below.</li>
+        <li>Pass it as the <code>X-API-Key</code> header (or <code>?key=</code>) on the requests below,
+          or in your MCP client config. The <a href="index.html">dashboard</a> itself stays keyless.</li>
       </ol>
 
       <h2 id="rest">REST API usage</h2>
@@ -137,6 +139,96 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
     "biggest_tables": [ { "id": "reddit", "fact_rows": 3588257275 },
                         { "id": "chartbeat", "fact_rows": 72436437 } ] } }</code></pre>
 
+      <h2 id="editorial">Editorial performance</h2>
+      <p>The editorial KPI layer reports content performance over a rolling window (default
+        <code>days=30</code>, max 365) across the unified analytics facts (GA4 + Chartbeat). Use it for
+        Chartbeat-style reporting: top authors, top categories, top articles, and a single article's
+        full performance profile. All four are key-gated reads — they never touch upstream.</p>
+
+      <h3>Top articles — <code>GET /v1/articles/top</code></h3>
+      <p>Ranks articles by a metric over the window. Params: <code>?metric=</code> (<code>pageviews</code>
+        default · <code>engagement_time</code> · <code>sessions</code> · <code>timespent</code>),
+        <code>?days=</code> (default 30), <code>?limit=</code> (default 50, max 200).</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/articles/top?metric=pageviews&days=30&limit=2"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "page_path": "/bonnie-blue-baby-shower-guests-reveal-what-cameras-didnt-catch/",
+      "title": "Bonnie Blue's Baby Shower Takes Another Unexpected Turn …",
+      "author": "Rocio Corsi", "category": "Entertainment", "team_id": 0,
+      "publish_date": "2026-06-11 21:32:21", "value": 115852 },
+    { "page_path": "/adult-jokes/",
+      "title": "111 Adult Jokes That Are Guaranteed To Make You Laugh Out Loud",
+      "author": "Aivaras Kaziukonis", "category": "Funny", "team_id": 0,
+      "publish_date": "2022-09-02 09:00:00", "value": 96237 }
+  ],
+  "meta": { "metric": "pageviews", "metric_unit": "count", "agg": "sum",
+            "days": 30, "limit": 2, "count": 2,
+            "generated_at": "2026-06-18T23:58:32+03:00" } }</code></pre>
+
+      <h3>One article's performance — <code>GET /v1/articles?path=</code></h3>
+      <p>Full metadata + cross-source metrics for a single article, keyed by its <code>page_path</code>
+        (the BoredPanda URL path). <code>data.metrics</code> rolls up the canonical KPIs; <code>by_source</code>
+        breaks the same article down per ingest source with day coverage.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/articles?path=/adult-jokes/"</code></pre>
+      <pre><code>{ "ok": true, "data": {
+    "page_path": "/adult-jokes/", "title": "111 Adult Jokes …",
+    "author": "Aivaras Kaziukonis", "is_staff": false, "category": "Funny",
+    "team_id": 0, "publish_date": "2022-09-02 09:00:00",
+    "metrics": {
+      "pageviews": 385675, "sessions": 559871, "engaged_sessions": 466125,
+      "engagement_time": 69.85, "timespent": 47576252,
+      "revenue": null, "bid_revenue": null, "impressions": null,
+      "pageviews_chartbeat": 695851 },
+    "by_source": [
+      { "source": "chartbeat", "metric_name": "engagement_time", "total": 51828,
+        "n_days": 742, "first_day": "2024-06-05", "last_day": "2026-06-17" } ] },
+  "meta": { "generated_at": "2026-06-18T23:58:33+03:00" } }</code></pre>
+
+      <h3>By author — <code>GET /v1/perf/author</code></h3>
+      <p>Per-author rollup over the window: article count, total pageviews, average engagement time, and
+        total time-spent. Params: <code>?days=</code>, <code>?limit=</code>. Sorted by pageviews desc.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/perf/author?days=30&limit=3"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "author": "Ilona Baliūnaitė",  "articles": 2077, "pageviews": 1493574,
+      "avg_engagement_time": 101.74, "timespent": 343005352 },
+    { "author": "Monika Pašukonytė", "articles": 1964, "pageviews": 1433162,
+      "avg_engagement_time": 62.32,  "timespent": 205679307 },
+    { "author": "Analice Couto",     "articles": 367,  "pageviews": 1342466,
+      "avg_engagement_time": 39.64,  "timespent": 72066912 }
+  ],
+  "meta": { "days": 30, "limit": 3, "count": 3,
+            "generated_at": "2026-06-18T23:58:31+03:00" } }</code></pre>
+
+      <h3>By category — <code>GET /v1/perf/category</code></h3>
+      <p>Same shape as <code>/v1/perf/author</code> but grouped by primary category (the first of an
+        article's categories). Params: <code>?days=</code>, <code>?limit=</code>.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/perf/category?days=30&limit=3"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "category": "Relationships", "articles": 7768,  "pageviews": 6960562,
+      "avg_engagement_time": 70.91, "timespent": 1054817230 },
+    { "category": "Curiosities",   "articles": 10624, "pageviews": 4167059,
+      "avg_engagement_time": 95.87, "timespent": 896953077 },
+    { "category": "Funny",         "articles": 8832,  "pageviews": 3670339,
+      "avg_engagement_time": 108.26, "timespent": 899719913 }
+  ],
+  "meta": { "days": 30, "limit": 3, "count": 3,
+            "dim": "category (primary category = first of articles.categories)",
+            "generated_at": "2026-06-18T23:58:31+03:00" } }</code></pre>
+
+      <h3>By team — <code>GET /v1/perf/team</code></h3>
+      <p>Grouped by editorial <code>team_id</code>. <b>Currently a stub:</b> the author/category &rarr; team
+        mapping tables are not yet populated, so every article resolves to <code>team_id=0</code>
+        (unassigned). The endpoint is live and returns the full team breakdown automatically once those
+        maps land — <code>meta.team_mapping_populated</code> flags the state.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/perf/team"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "team_id": 0, "team_key": "unassigned", "team_name": "Unassigned",
+      "articles": 76353, "pageviews": 25927273,
+      "avg_engagement_time": 74.96, "timespent": 4284170423 }
+  ],
+  "meta": { "days": 30, "limit": 50, "count": 1,
+            "team_mapping_populated": false,
+            "generated_at": "2026-06-18T23:56:19+03:00" } }</code></pre>
+
       <h3>Error envelope</h3>
       <pre><code>{ "ok": false, "error": "missing or invalid API key", "code": "unauthorized",
   "hint": "pass ?key=YOUR_KEY or the X-API-Key header; request one via POST /v1/keys/request" }</code></pre>
@@ -161,9 +253,11 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
     }
   }
 }</code></pre>
-      <p>The MCP exposes the same read-only surface as the REST API (source board, source detail,
-        30-day coverage, hub stats), so an agent can ask "which pandabytes sources are stale?" or
-        "chart GA4 pageviews for the last 30 days" without writing any HTTP code.</p>
+      <p>The MCP exposes the same read-only surface as the REST API — both the freshness tools (source
+        board, source detail, 30-day coverage, hub stats) and the editorial KPI tools (top articles,
+        per-article performance, top authors / categories / teams) — so an agent can ask "which
+        pandabytes sources are stale?", "chart GA4 pageviews for the last 30 days", or "who were our
+        top authors by pageviews this month?" without writing any HTTP code.</p>
 
       <h2 id="quickstart">Agent quick-start (3 calls)</h2>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code># 1) discover the surface (no key)
@@ -174,7 +268,10 @@ KEY=YOUR_KEY
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources"
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources/ga4"
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources/ga4/coverage?days=30"
-curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/stats"</code></pre>
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/stats"
+# 4) editorial reporting (top articles / authors / categories)
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles/top?metric=pageviews&days=30"
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/perf/author?days=30&limit=10"</code></pre>
     </div>
   </main>
 
