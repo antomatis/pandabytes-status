@@ -136,11 +136,16 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
   if (!cov || !cov.length) return '<div class="chart-note">No coverage data for this source.</div>';
   const n = cov.length;
   // viewBox uses a 1:1 user-unit space; CSS sizes it responsively (no distortion).
-  // Width scales with bar count so each bar keeps a comfortable pitch (~30u) for the
-  // rotated value/date labels; a floor keeps short series from looking sparse.
+  // Each bar keeps a FIXED comfortable pitch (~30u) for the rotated value/date labels,
+  // identical across charts. The plot reserves a minimum window (≥ a ~560u floor) so a
+  // short series doesn't look sparse — and the bars are RIGHT-PACKED into that window:
+  // the newest day (cov[n-1]) sits flush against the right edge, any unused (older)
+  // slots stay empty on the LEFT (standard time-series "newest on the right" layout).
   const padL = 52, padR = 22, padT = 56, padB = 58;        // big top/bottom gutters for rotated labels
-  const PITCH = 30;                                        // user-units per bar (label-safe)
-  const plotW = Math.max(560, n * PITCH);
+  const PITCH = 30;                                        // user-units per bar (label-safe), fixed
+  const slots = Math.max(n, Math.round(560 / PITCH));      // window in bar-pitches (floor for short series)
+  const offset = slots - n;                                // empty leading slots on the LEFT (right-pack)
+  const plotW = slots * PITCH;
   const W = padL + plotW + padR;
   const H = 230;
   const vals = cov.map(p => (p.key_metric == null ? null : Number(p.key_metric)));
@@ -148,7 +153,7 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
   const max = Math.max(1, ...vals.map(v => v == null ? 0 : v));
   const plotH = H - padT - padB;
   const baseY = padT + plotH;
-  const bw = plotW / n, pad = Math.min(bw * 0.22, 6);
+  const bw = PITCH, pad = Math.min(bw * 0.22, 6);          // fixed bar slot width
   const innerW = Math.max(2, bw - 2 * pad);
   const yOf = (v) => baseY - (v / max) * plotH;
 
@@ -167,7 +172,7 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
   }
 
   for (let i = 0; i < n; i++) {
-    const v = vals[i], x = padL + i * bw + pad, missing = (v == null);
+    const v = vals[i], x = padL + (offset + i) * bw + pad, missing = (v == null);
     const cx = (x + innerW / 2);
     const date = cov[i].date || '';
     const rc = cov[i].row_count;
@@ -210,6 +215,15 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
 PB.wireChartTooltips = (holder) => {
   if (!holder || holder._ccWired) return;
   holder._ccWired = true;
+  // When the chart is wider than its scroll rail (narrow/mobile viewport), start the
+  // rail scrolled to its far-RIGHT end so the newest day is visible by default
+  // (matches the right-packed, newest-flush-right layout).
+  const scroll = holder.querySelector('.bigchart-scroll');
+  if (scroll) {
+    const toRight = () => { scroll.scrollLeft = scroll.scrollWidth; };
+    toRight();
+    requestAnimationFrame(toRight);   // re-apply after layout/SVG sizing settles
+  }
   let tip = holder.querySelector('.cc-tip');
   if (!tip) {
     tip = document.createElement('div');

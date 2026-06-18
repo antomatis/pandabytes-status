@@ -208,6 +208,12 @@ button:disabled { opacity: .5; cursor: default; }
    narrower than the chart (mobile), the rail scrolls instead of cramming the bars. */
 .bigchart-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
   scrollbar-width: thin; padding-bottom: 2px; }
+/* right-align: when the chart SVG is narrower than the rail, push it to the right edge
+   (margin-left:auto, block flow — keeps the rail normally scrollable, unlike flex-end)
+   so the newest day (right-packed inside the SVG) is flush right with the empty leading
+   slots on the LEFT. When the SVG is WIDER than the rail (mobile), JS scrolls the rail
+   to its far-right end so the newest day shows by default; older days scroll into view. */
+.bigchart-scroll > .bigchart { margin-left: auto; }
 .bigchart-scroll::-webkit-scrollbar { height: 8px; }
 .bigchart-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .bigchart { display: block; height: auto; font-family: var(--sans); overflow: visible;
