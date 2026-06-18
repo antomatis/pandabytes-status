@@ -131,6 +131,28 @@ button:disabled { opacity: .5; cursor: default; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; letter-spacing: -.01em; }
 .section-title .muted { color: var(--fg-faint); font-weight: 500; font-size: 13px; }
 
+/* ---- group-jump rail ---- */
+/* Sticky horizontal pill-strip that jumps to each source group and scroll-spies
+   the one in view. Same visual language as the docs TOC mobile pills, applied at
+   every width since the board is a single full-width column. Hidden until JS
+   populates it (or when there's only one group). */
+.group-rail { position: sticky; top: 56px; z-index: 20; display: flex; gap: 6px;
+  margin: 0 0 12px; padding: 8px 0 6px; background: var(--page);
+  overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; }
+.group-rail[hidden] { display: none; }
+.group-rail::-webkit-scrollbar { display: none; }
+.group-rail a { white-space: nowrap; flex: none; border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 5px 13px; background: var(--surface);
+  color: var(--fg-faint); font-size: 12.5px; font-weight: 600; line-height: 1.35;
+  transition: color .12s ease, background .12s ease, border-color .12s ease; }
+.group-rail a:hover { color: var(--fg); background: var(--surface-2); text-decoration: none; }
+.group-rail a.active { color: var(--accent-deep); background: var(--accent-soft);
+  border-color: var(--accent); }
+.group-rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* land group anchors below the sticky site header (52px) + rail (~44px) */
+.group[id] { scroll-margin-top: 104px; }
+
 /* ---- grouped board ---- */
 .board { display: flex; flex-direction: column; gap: 14px; }
 
