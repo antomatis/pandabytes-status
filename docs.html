@@ -23,7 +23,22 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main class="wrap doc-layout">
+    <!-- in-page section nav: sticky on desktop, a horizontal scroll-strip on mobile.
+         Keyless, additive. Links jump to the H2 ids below; scroll-spy (app.js) marks
+         the section currently in view. -->
+    <aside class="doc-toc" aria-label="On this page">
+      <div class="doc-toc-title">On this page</div>
+      <nav class="doc-toc-nav">
+        <a href="#what">What is pandabytes?</a>
+        <a href="#catalog">Source catalog</a>
+        <a href="#getkey">Get an API key</a>
+        <a href="#rest">REST API usage</a>
+        <a href="#editorial">Editorial performance</a>
+        <a href="#mcp">MCP server</a>
+        <a href="#quickstart">Agent quick-start</a>
+      </nav>
+    </aside>
     <div class="doc">
       <h2 id="what">What is pandabytes?</h2>
       <p><b>pandabytes</b> is BoredPanda's central content-performance data hub — a single source of
@@ -292,6 +307,44 @@ curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/perf/author?days=3
         <div class="clabel">${PB.esc(s.label)}</div>
         <div class="cmetric">★ ${PB.esc(s.key_metric_name)} <span class="tip">(${PB.esc(s.key_metric_unit)})</span></div>
       </div>`).join('');
+  })();
+  </script>
+  <script>
+  /* TOC scroll-spy: highlight the nav link for the H2 section currently in view.
+     Vanilla IntersectionObserver, keyless, degrades to plain anchor links if
+     unsupported. Smooth-scroll on click is handled by CSS scroll-behavior. */
+  (function () {
+    const toc = document.querySelector('.doc-toc-nav');
+    if (!toc || !('IntersectionObserver' in window)) return;
+    const links = Array.from(toc.querySelectorAll('a'));
+    const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+    const heads = links
+      .map(a => document.getElementById(a.getAttribute('href').slice(1)))
+      .filter(Boolean);
+    if (!heads.length) return;
+    const visible = new Set();
+    const mark = () => {
+      // pick the topmost section currently intersecting (or, if none, the last one
+      // scrolled past) so exactly one link is active.
+      let activeId = null;
+      let best = Infinity;
+      for (const id of visible) {
+        const top = document.getElementById(id).getBoundingClientRect().top;
+        if (top < best) { best = top; activeId = id; }
+      }
+      if (!activeId) return;
+      links.forEach(a => a.classList.remove('active'));
+      const a = byId.get(activeId);
+      if (a) a.classList.add('active');
+    };
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) visible.add(e.target.id);
+        else visible.delete(e.target.id);
+      }
+      mark();
+    }, { rootMargin: '-90px 0px -65% 0px', threshold: 0 });
+    heads.forEach(h => obs.observe(h));
   })();
   </script>
 </body>
