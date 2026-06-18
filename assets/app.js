@@ -328,3 +328,47 @@ PB.copyToClipboard = (btn) => {
     const old = btn.textContent; btn.textContent = 'copied'; setTimeout(() => btn.textContent = old, 1200);
   });
 };
+
+/* tiny on-theme toast (auto-creates its host once); used by anchor-copy below */
+PB.toast = (msg) => {
+  let host = document.querySelector('.doc-toast');
+  if (!host) { host = document.createElement('div'); host.className = 'doc-toast'; host.setAttribute('role', 'status'); host.setAttribute('aria-live', 'polite'); document.body.appendChild(host); }
+  host.textContent = msg;
+  host.classList.add('show');
+  clearTimeout(PB.toast._t);
+  PB.toast._t = setTimeout(() => host.classList.remove('show'), 1700);
+};
+
+/* Copy a stable deep-link to a heading, then confirm with a toast.
+   Reuses navigator.clipboard (same path as copyToClipboard). The anchor's
+   href already carries the canonical #id, so build the absolute URL from it. */
+PB.copyAnchorLink = (a, ev) => {
+  if (ev) ev.preventDefault();
+  const id = (a.getAttribute('href') || '').replace(/^#/, '');
+  if (!id) return;
+  const url = location.origin + location.pathname + '#' + id;
+  const done = () => { history.replaceState(null, '', '#' + id); PB.toast('Link copied'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done).catch(() => { location.hash = id; });
+  } else {
+    // legacy fallback so the heading still resolves even without the clipboard API
+    location.hash = id; PB.toast('Link copied');
+  }
+};
+
+/* Wire hover/focus "#" anchors onto every doc heading that has an id.
+   Idempotent, keyboard-accessible (real <a> with href), keyless. */
+PB.initHeadingAnchors = () => {
+  const heads = document.querySelectorAll('.doc h2[id], .doc h3[id]');
+  heads.forEach(h => {
+    if (h.querySelector('.hanchor')) return;
+    const a = document.createElement('a');
+    a.className = 'hanchor';
+    a.href = '#' + h.id;
+    a.setAttribute('aria-label', 'Copy link to this section');
+    a.title = 'Copy link to this section';
+    a.textContent = '#';
+    a.addEventListener('click', (e) => PB.copyAnchorLink(a, e));
+    h.appendChild(a);
+  });
+};

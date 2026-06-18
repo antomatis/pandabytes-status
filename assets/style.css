@@ -333,8 +333,35 @@ button:disabled { opacity: .5; cursor: default; }
   padding: 10px 26px 28px; margin-top: 18px; box-shadow: var(--shadow); }
 .doc h2 { font-family: var(--serif); color: var(--fg-strong); border-bottom: 1px solid var(--border-soft);
   padding-bottom: 10px; margin-top: 32px; letter-spacing: -.01em; }
-.doc h3 { margin-top: 26px; color: var(--fg-strong); }
+.doc h3 { margin-top: 26px; color: var(--fg-strong); scroll-margin-top: 80px; }
 .doc p, .doc li { color: var(--fg); }
+
+/* hover/focus "#" deep-link anchor on each heading. Inline so it never overlaps
+   the H2 underline; reveals on heading hover or keyboard focus, copies the URL. */
+.doc h2, .doc h3 { position: relative; }
+.doc .hanchor {
+  display: inline-block; margin-left: .35em; padding: 0 .15em;
+  color: var(--accent); font-weight: 700; text-decoration: none;
+  font-family: var(--sans); font-size: .72em; line-height: 1;
+  opacity: 0; transform: translateY(-1px); transition: opacity .12s ease, color .12s ease;
+  vertical-align: middle; cursor: pointer; user-select: none;
+}
+.doc h2:hover .hanchor, .doc h3:hover .hanchor, .doc .hanchor:focus-visible { opacity: 1; }
+.doc .hanchor:hover { color: var(--accent-deep); }
+.doc .hanchor:focus-visible { opacity: 1; outline: 2px solid var(--accent);
+  outline-offset: 2px; border-radius: 4px; }
+@media (hover: none) { .doc .hanchor { opacity: .5; } } /* always visible on touch */
+
+/* toast confirmation (shared PB.toast host) */
+.doc-toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 12px);
+  background: var(--fg-strong); color: #fff; font-size: 13px; font-weight: 600;
+  padding: 9px 16px; border-radius: var(--radius-pill); box-shadow: var(--shadow-lg);
+  opacity: 0; pointer-events: none; z-index: 60;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.doc-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .doc-toast { transition: opacity .16s ease; } }
 .doc table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
 .doc th, .doc td { text-align: left; padding: 8px 11px; border-bottom: 1px solid var(--border-soft); }
 .doc th { color: var(--fg-faint); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
