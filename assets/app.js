@@ -132,9 +132,14 @@ PB.fmtDayLong = (iso) => {
 // margin for the rotated text and a wide per-bar pitch (min ~30u/bar) so all 30+
 // labels are legible. On narrow viewports the chart stays at its intrinsic width and
 // the holder scrolls horizontally (CSS) instead of squeezing the bars.
-PB.columnChart = (cov, color, metricName, unitLabel) => {
+// `liveFrom` (optional ISO yyyy-mm-dd): bars on/after this date are the "live" era
+// (e.g. reddit /r/all firehose, which backfills to full later). They render in a
+// hatched/lighter shade with a small legend so a known boundary step-down doesn't
+// read as a broken/missing-data chart. Omit it and the chart is unchanged.
+PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
   if (!cov || !cov.length) return '<div class="chart-note">No coverage data for this source.</div>';
   const n = cov.length;
+  const isLive = (d) => liveFrom && d && String(d) >= String(liveFrom);  // ISO dates compare lexically
   // viewBox uses a 1:1 user-unit space; CSS sizes it responsively (no distortion).
   // Each bar keeps a FIXED comfortable pitch (~30u) for the rotated value/date labels,
   // identical across charts. The plot reserves a minimum window (≥ a ~560u floor) so a
@@ -171,14 +176,18 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
     grid += `<text x="${(padL-7).toFixed(1)}" y="${(gy+3.5).toFixed(1)}" class="cc-yt" text-anchor="end">${frac === 0 ? '0' : PB.fmtInt(max * frac)}</text>`;
   }
 
+  let anyLive = false;
   for (let i = 0; i < n; i++) {
     const v = vals[i], x = padL + (offset + i) * bw + pad, missing = (v == null);
     const cx = (x + innerW / 2);
     const date = cov[i].date || '';
     const rc = cov[i].row_count;
+    const live = isLive(date);                         // live-firehose era bar?
+    if (live) anyLive = true;
     // data-* drive the JS tooltip (no native <title> — too slow/unstyled)
     const data = `data-d="${PB.esc(PB.fmtDayLong(date))}" data-v="${missing ? '' : PB.esc(PB.fmtFull(v))}"`
-      + ` data-vu="${PB.esc(unit)}" data-r="${rc == null ? '' : PB.esc(PB.fmtFull(rc))}" data-gap="${(missing || v === 0) ? '1' : '0'}"`;
+      + ` data-vu="${PB.esc(unit)}" data-r="${rc == null ? '' : PB.esc(PB.fmtFull(rc))}" data-gap="${(missing || v === 0) ? '1' : '0'}"`
+      + (live ? ' data-live="1"' : '');
     // value-on-top: rotated -90° (reads bottom→top), anchored just above the bar top.
     // gap/zero days show a muted "0" so EVERY bar carries a number.
     if (missing || v === 0) {
@@ -188,7 +197,14 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
       vlab += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" class="cc-vl cc-vl-zero" text-anchor="start" transform="rotate(-90 ${cx.toFixed(1)} ${ty.toFixed(1)})">0</text>`;
     } else {
       const by = yOf(v), bh = Math.max(2, baseY - by);
-      bars += `<rect class="cc-bar" x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${innerW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${color}" ${data}/>`;
+      // live-era bars: hatched overlay over a faint base of the same color (reads as
+      // "real-time, backfills later" rather than a gap). Older/archive bars are solid.
+      if (live) {
+        bars += `<rect class="cc-bar cc-live" x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${innerW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${color}" fill-opacity="0.28" ${data}/>`;
+        bars += `<rect class="cc-bar-hatch" x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${innerW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="url(#ccHatch)" pointer-events="none"/>`;
+      } else {
+        bars += `<rect class="cc-bar" x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${innerW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${color}" ${data}/>`;
+      }
       const ty = by - 4;          // baseline of the (rotated) value label, just above the bar
       vlab += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" class="cc-vl" text-anchor="start" transform="rotate(-90 ${cx.toFixed(1)} ${ty.toFixed(1)})">${PB.esc(PB.fmtInt(v))}</text>`;
     }
@@ -202,12 +218,29 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
   const title = `<text x="${padL}" y="18" class="cc-title">${PB.esc(metric)} / day</text>`
     + `<text x="${(W-padR).toFixed(1)}" y="18" class="cc-sub" text-anchor="end">peak ${PB.esc(PB.fmtInt(max))} ${PB.esc(unit)} · ${days}</text>`;
 
+  // legend for the live-era hatch (only when some bars are flagged live). A small
+  // swatch + "live · backfills monthly" sits under the peak subtitle on the RIGHT,
+  // right-aligned — clear of the left-side bars' rotated value labels.
+  let legend = '';
+  if (anyLive) {
+    const ly = 34, rx0 = W - padR;
+    const legText = 'live · backfills to full monthly';
+    legend = `<text x="${rx0.toFixed(1)}" y="${ly}" class="cc-legend" text-anchor="end">${legText}</text>`
+      + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="${color}" fill-opacity="0.28"/>`
+      + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="url(#ccHatch)"/>`;
+  }
+
+  // diagonal-hatch pattern reused by every live-era bar (defined once per chart).
+  const defs = `<defs><pattern id="ccHatch" patternUnits="userSpaceOnUse" width="5" height="5"`
+    + ` patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="${color}"`
+    + ` stroke-width="2.2" stroke-opacity="0.85"/></pattern></defs>`;
+
   // inner SVG keeps its intrinsic width; the .bigchart-scroll holder (CSS) lets it
   // scroll horizontally on narrow screens rather than cramming 30 labels together.
   return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"`
     + ` preserveAspectRatio="xMinYMid meet" role="img" style="--cc-w:${W}"`
     + ` aria-label="${PB.esc(metric)} per day, peak ${PB.esc(PB.fmtInt(max))}, ${n} days each labelled with date and value">`
-    + `${grid}${bars}${vlab}${xlab}${title}</svg>`;
+    + `${defs}${grid}${bars}${vlab}${xlab}${title}${legend}</svg>`;
 };
 
 // Attach one floating tooltip to a chart holder. Reads data-* off .cc-bar rects.
@@ -241,6 +274,8 @@ PB.wireChartTooltips = (holder) => {
       const v = bar.getAttribute('data-v'), vu = bar.getAttribute('data-vu'), r = bar.getAttribute('data-r');
       html += `<div class="cc-tip-v">${PB.esc(v)} <span>${PB.esc(vu)}</span></div>`;
       if (r) html += `<div class="cc-tip-r">${PB.esc(r)} rows</div>`;
+      if (bar.getAttribute('data-live') === '1')
+        html += `<div class="cc-tip-live">live · backfills to full monthly</div>`;
     }
     tip.innerHTML = html;
     tip.classList.add('show');

@@ -220,10 +220,17 @@ button:disabled { opacity: .5; cursor: default; }
   /* intrinsic px width from the viewBox (set via --cc-w on the element). */
   width: calc(var(--cc-w, 880) * 1px); }
 .chart-note { font-size: 11px; color: var(--fg-faint); margin-top: 8px; }
+/* source-provided explanation under the chart title (e.g. reddit archive→firehose
+   boundary): a quiet info callout so a known step-down doesn't read as broken data. */
+.chart-source-note { font-size: 12px; line-height: 1.45; color: var(--fg-dim);
+  background: var(--surface-2, #f5f7fa); border-left: 3px solid #1aa6a0;
+  border-radius: 4px; padding: 8px 11px; margin: 0 0 12px; }
 
 /* in-SVG text (uses px values in the 880×188 viewBox user space) */
 .cc-title { font-size: 13px; font-weight: 800; fill: var(--fg-strong); letter-spacing: -.01em; }
 .cc-sub   { font-size: 10.5px; font-weight: 600; fill: var(--fg-faint); }
+/* in-SVG legend label for the live-era hatch swatch */
+.cc-legend { font-size: 10px; font-weight: 600; fill: var(--fg-dim); }
 .cc-yt    { font-size: 9.5px; font-weight: 600; fill: var(--fg-quiet);
   font-variant-numeric: tabular-nums; }
 /* per-bar date tick (rotated -60° in the SVG) — one under every bar */
@@ -250,6 +257,7 @@ button:disabled { opacity: .5; cursor: default; }
 .cc-tip-v span { font-size: 11px; font-weight: 600; color: #aeb9c9; }
 .cc-tip-r { font-size: 11px; color: #aeb9c9; font-variant-numeric: tabular-nums; margin-top: 1px; }
 .cc-tip-gap { font-size: 12px; font-weight: 700; color: #f3b6c5; }
+.cc-tip-live { font-size: 10.5px; font-weight: 600; color: #8fe3df; margin-top: 3px; }
 
 /* ---- docs ---- */
 .doc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);

@@ -62,7 +62,11 @@ function facetRow(s) {
 
   if (clickable && isOpen) {
     const metricName = s.key_metric_name || 'rows';
-    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s))}</div></div>`;
+    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s), s.live_from)}</div></div>`;
+    // Source-provided explanation (e.g. reddit archive→firehose boundary), surfaced
+    // right under the chart title so a known step-down doesn't read as broken.
+    const noteHtml = s.note
+      ? `<div class="chart-source-note">${PB.esc(s.note)}</div>` : '';
     html += `<div class="detail" data-detail="${PB.esc(s.id)}">
       <div class="chart-wrap">
         <div class="chart-meta">
@@ -71,6 +75,7 @@ function facetRow(s) {
           <span>latest: <b>${PB.esc(s.latest_date || '—')}</b></span>
           <span>status: <b>${PB.esc(s.status || '—')}</b></span>
         </div>
+        ${noteHtml}
         ${chart}
         <div class="chart-note">30-day daily ${PB.esc(s.key_metric_name || 'metric')}. Empty bars = days with no data (gaps to investigate).</div>
       </div></div>`;
