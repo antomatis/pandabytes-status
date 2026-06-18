@@ -203,8 +203,16 @@ button:disabled { opacity: .5; cursor: default; }
   gap: 18px; flex-wrap: wrap; }
 .detail .chart-meta b { color: var(--fg-strong); }
 .bigchart-holder { position: relative; }
-.bigchart { width: 100%; height: auto; aspect-ratio: 880 / 188; display: block;
-  font-family: var(--sans); overflow: visible; }
+/* horizontally-scrollable rail: the chart renders at a FIXED intrinsic width so the
+   30 dated+valued labels stay the same legible size everywhere; when the viewport is
+   narrower than the chart (mobile), the rail scrolls instead of cramming the bars. */
+.bigchart-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin; padding-bottom: 2px; }
+.bigchart-scroll::-webkit-scrollbar { height: 8px; }
+.bigchart-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.bigchart { display: block; height: auto; font-family: var(--sans); overflow: visible;
+  /* intrinsic px width from the viewBox (set via --cc-w on the element). */
+  width: calc(var(--cc-w, 880) * 1px); }
 .chart-note { font-size: 11px; color: var(--fg-faint); margin-top: 8px; }
 
 /* in-SVG text (uses px values in the 880×188 viewBox user space) */
@@ -212,9 +220,15 @@ button:disabled { opacity: .5; cursor: default; }
 .cc-sub   { font-size: 10.5px; font-weight: 600; fill: var(--fg-faint); }
 .cc-yt    { font-size: 9.5px; font-weight: 600; fill: var(--fg-quiet);
   font-variant-numeric: tabular-nums; }
-.cc-xt    { font-size: 10px; font-weight: 600; fill: var(--fg-faint); }
-.cc-vl    { font-size: 10px; font-weight: 800; fill: var(--fg-dim);
-  font-variant-numeric: tabular-nums; paint-order: stroke; stroke: #fff; stroke-width: 2.5px; }
+/* per-bar date tick (rotated -60° in the SVG) — one under every bar */
+.cc-xt    { font-size: 9px; font-weight: 600; fill: var(--fg-faint);
+  font-variant-numeric: tabular-nums; }
+/* per-bar value (rotated -90° in the SVG, sits on top of every bar). White halo so
+   the number stays crisp where it overlaps a bar; tabular nums for tidy K/M/B. */
+.cc-vl    { font-size: 9px; font-weight: 800; fill: var(--fg-dim);
+  font-variant-numeric: tabular-nums; paint-order: stroke; stroke: #fff; stroke-width: 2.4px;
+  stroke-linejoin: round; }
+.cc-vl-zero { fill: var(--fg-faint); font-weight: 700; }
 .cc-bar   { cursor: pointer; transition: opacity .1s ease; }
 .cc-bar:hover, .cc-bar.cc-hot { opacity: .82; }
 .cc-gap   { fill: #ef9aae; }

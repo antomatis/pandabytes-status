@@ -62,7 +62,7 @@ function facetRow(s) {
 
   if (clickable && isOpen) {
     const metricName = s.key_metric_name || 'rows';
-    const chart = `<div class="bigchart-holder">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s))}</div>`;
+    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s))}</div></div>`;
     html += `<div class="detail" data-detail="${PB.esc(s.id)}">
       <div class="chart-wrap">
         <div class="chart-meta">

@@ -104,6 +104,13 @@ PB.fmtDay = (iso) => {
   if (!m) return String(iso).slice(5);
   return PB._MON[(+m[2]) - 1] + ' ' + (+m[3]);
 };
+// Compact per-bar date "6/16" (month/day) — fits under every one of 30 rotated ticks.
+PB.fmtDayShort = (iso) => {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(iso).slice(5);
+  return (+m[2]) + '/' + (+m[3]);
+};
 // Long date for the tooltip: "Mon, Jun 16 2026".
 PB._DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 PB.fmtDayLong = (iso) => {
@@ -119,36 +126,31 @@ PB.fmtDayLong = (iso) => {
 // the expanded panel. `metricName` names WHAT is plotted (e.g. "pageviews");
 // `unitLabel` is the unit shown in the tooltip. Bars carry data-* attrs that
 // PB.wireChartTooltips() reads to build a floating tooltip ({date, value, rows}).
+//
+// EVERY bar is labelled: a compact value (rotated vertical) sits on top of the bar
+// and a short date (rotated) sits underneath. The SVG carries a generous bottom/top
+// margin for the rotated text and a wide per-bar pitch (min ~30u/bar) so all 30+
+// labels are legible. On narrow viewports the chart stays at its intrinsic width and
+// the holder scrolls horizontally (CSS) instead of squeezing the bars.
 PB.columnChart = (cov, color, metricName, unitLabel) => {
   if (!cov || !cov.length) return '<div class="chart-note">No coverage data for this source.</div>';
+  const n = cov.length;
   // viewBox uses a 1:1 user-unit space; CSS sizes it responsively (no distortion).
-  const W = 880, H = 188;
-  const padL = 52, padR = 14, padT = 30, padB = 30;        // gutters: title + y-scale + x-dates
+  // Width scales with bar count so each bar keeps a comfortable pitch (~30u) for the
+  // rotated value/date labels; a floor keeps short series from looking sparse.
+  const padL = 52, padR = 22, padT = 56, padB = 58;        // big top/bottom gutters for rotated labels
+  const PITCH = 30;                                        // user-units per bar (label-safe)
+  const plotW = Math.max(560, n * PITCH);
+  const W = padL + plotW + padR;
+  const H = 230;
   const vals = cov.map(p => (p.key_metric == null ? null : Number(p.key_metric)));
   const present = vals.filter(v => v != null && v > 0);
   const max = Math.max(1, ...vals.map(v => v == null ? 0 : v));
-  const n = cov.length;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const plotH = H - padT - padB;
   const baseY = padT + plotH;
-  const bw = plotW / n, pad = Math.min(bw * 0.18, 5);
-  const innerW = Math.max(1, bw - 2 * pad);
+  const bw = plotW / n, pad = Math.min(bw * 0.22, 6);
+  const innerW = Math.max(2, bw - 2 * pad);
   const yOf = (v) => baseY - (v / max) * plotH;
-
-  // index of min / max / last present bars → always-on value labels
-  let iMax = -1, iMin = -1, iLast = -1, vMax = -Infinity, vMin = Infinity;
-  for (let i = 0; i < n; i++) {
-    const v = vals[i];
-    if (v == null || v <= 0) continue;
-    iLast = i;
-    if (v > vMax) { vMax = v; iMax = i; }
-    if (v < vMin) { vMin = v; iMin = i; }
-  }
-  const labelSet = new Set([iMax, iMin, iLast].filter(i => i >= 0));
-
-  // weekly-ish x ticks: ~6 evenly spaced, always include first & last
-  const step = Math.max(1, Math.round(n / 6));
-  const tickSet = new Set([0, n - 1]);
-  for (let i = 0; i < n; i += step) tickSet.add(i);
 
   const metric = metricName || 'value';
   const unit = unitLabel || metric;
@@ -172,32 +174,34 @@ PB.columnChart = (cov, color, metricName, unitLabel) => {
     // data-* drive the JS tooltip (no native <title> — too slow/unstyled)
     const data = `data-d="${PB.esc(PB.fmtDayLong(date))}" data-v="${missing ? '' : PB.esc(PB.fmtFull(v))}"`
       + ` data-vu="${PB.esc(unit)}" data-r="${rc == null ? '' : PB.esc(PB.fmtFull(rc))}" data-gap="${(missing || v === 0) ? '1' : '0'}"`;
+    // value-on-top: rotated -90° (reads bottom→top), anchored just above the bar top.
+    // gap/zero days show a muted "0" so EVERY bar carries a number.
     if (missing || v === 0) {
       // zero/gap day: thin red baseline tick (still hoverable for {date,gap})
       bars += `<rect class="cc-bar cc-gap" x="${x.toFixed(1)}" y="${(baseY-2.5).toFixed(1)}" width="${innerW.toFixed(1)}" height="2.5" rx="0.6" ${data}/>`;
+      const ty = baseY - 6;
+      vlab += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" class="cc-vl cc-vl-zero" text-anchor="start" transform="rotate(-90 ${cx.toFixed(1)} ${ty.toFixed(1)})">0</text>`;
     } else {
       const by = yOf(v), bh = Math.max(2, baseY - by);
       bars += `<rect class="cc-bar" x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${innerW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${color}" ${data}/>`;
-      // always-on compact value above the min / max / last bars
-      if (labelSet.has(i)) {
-        const ty = Math.max(padT - 1, by - 4);
-        vlab += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" class="cc-vl" text-anchor="middle">${PB.esc(PB.fmtInt(v))}</text>`;
-      }
+      const ty = by - 4;          // baseline of the (rotated) value label, just above the bar
+      vlab += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" class="cc-vl" text-anchor="start" transform="rotate(-90 ${cx.toFixed(1)} ${ty.toFixed(1)})">${PB.esc(PB.fmtInt(v))}</text>`;
     }
-    if (tickSet.has(i)) {
-      const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
-      const lx = i === 0 ? padL : (i === n - 1 ? W - padR : cx);
-      xlab += `<text x="${lx.toFixed(1)}" y="${(H-9).toFixed(1)}" class="cc-xt" text-anchor="${anchor}">${PB.esc(PB.fmtDay(date))}</text>`;
-    }
+    // date-under-every-bar: rotated -60°, end-anchored so it hangs below-left of cx.
+    const dy = baseY + 12;
+    xlab += `<text x="${cx.toFixed(1)}" y="${dy.toFixed(1)}" class="cc-xt" text-anchor="end" transform="rotate(-60 ${cx.toFixed(1)} ${dy.toFixed(1)})">${PB.esc(PB.fmtDayShort(date))}</text>`;
   }
 
   // chart title (WHAT is plotted) + sample-size note
   const days = `${present.length}/${n} days`;
-  const title = `<text x="${padL}" y="16" class="cc-title">${PB.esc(metric)} / day</text>`
-    + `<text x="${(W-padR).toFixed(1)}" y="16" class="cc-sub" text-anchor="end">peak ${PB.esc(PB.fmtInt(max))} ${PB.esc(unit)} · ${days}</text>`;
+  const title = `<text x="${padL}" y="18" class="cc-title">${PB.esc(metric)} / day</text>`
+    + `<text x="${(W-padR).toFixed(1)}" y="18" class="cc-sub" text-anchor="end">peak ${PB.esc(PB.fmtInt(max))} ${PB.esc(unit)} · ${days}</text>`;
 
-  return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img"`
-    + ` aria-label="${PB.esc(metric)} per day, peak ${PB.esc(PB.fmtInt(max))}">`
+  // inner SVG keeps its intrinsic width; the .bigchart-scroll holder (CSS) lets it
+  // scroll horizontally on narrow screens rather than cramming 30 labels together.
+  return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"`
+    + ` preserveAspectRatio="xMinYMid meet" role="img" style="--cc-w:${W}"`
+    + ` aria-label="${PB.esc(metric)} per day, peak ${PB.esc(PB.fmtInt(max))}, ${n} days each labelled with date and value">`
     + `${grid}${bars}${vlab}${xlab}${title}</svg>`;
 };
 
