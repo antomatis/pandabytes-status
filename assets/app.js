@@ -219,12 +219,15 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
     + `<text x="${(W-padR).toFixed(1)}" y="18" class="cc-sub" text-anchor="end">peak ${PB.esc(PB.fmtInt(max))} ${PB.esc(unit)} · ${days}</text>`;
 
   // legend for the live-era hatch (only when some bars are flagged live). A small
-  // swatch + "live · backfills monthly" sits under the peak subtitle on the RIGHT,
-  // right-aligned — clear of the left-side bars' rotated value labels.
+  // swatch + "live · NSFW-complete, recovering" sits under the peak subtitle on the
+  // RIGHT, right-aligned — clear of the left-side bars' rotated value labels.
+  // Copy reflects the post-firehose-fix reality: the live /r/all firehose is now
+  // NSFW-complete (no longer the prior shortfall) and daily volume is recovering —
+  // not "waiting on the monthly archive to backfill" (the old, now-stale framing).
   let legend = '';
   if (anyLive) {
     const ly = 34, rx0 = W - padR;
-    const legText = 'live · backfills to full monthly';
+    const legText = 'live · NSFW-complete, recovering';
     legend = `<text x="${rx0.toFixed(1)}" y="${ly}" class="cc-legend" text-anchor="end">${legText}</text>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="${color}" fill-opacity="0.28"/>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="url(#ccHatch)"/>`;
@@ -275,7 +278,7 @@ PB.wireChartTooltips = (holder) => {
       html += `<div class="cc-tip-v">${PB.esc(v)} <span>${PB.esc(vu)}</span></div>`;
       if (r) html += `<div class="cc-tip-r">${PB.esc(r)} rows</div>`;
       if (bar.getAttribute('data-live') === '1')
-        html += `<div class="cc-tip-live">live · backfills to full monthly</div>`;
+        html += `<div class="cc-tip-live">live · firehose now NSFW-complete, volume recovering</div>`;
     }
     tip.innerHTML = html;
     tip.classList.add('show');
