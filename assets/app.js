@@ -54,9 +54,11 @@ PB.syncedAgo = (latestDate, generatedAt) => {
 
 PB.normStatus = (s) => (s && PB.STATUS_LIST.includes(s)) ? s : 'UNKNOWN';
 
+// Light-theme status palette (Slack tokens) — also drives sparkline/column-chart
+// bar fills, so values are saturated enough to read on white.
 PB.statusColor = (s) => ({
-  FRESH: '#3fb950', STALE: '#d29922', STALLED: '#db8e3c', FROZEN: '#6cb6ff',
-  MISSING: '#f85149', DEPRECATED: '#8b949e', UNKNOWN: '#6e7b8a',
+  FRESH: '#2eb67d', STALE: '#ecb22e', STALLED: '#e0973a', FROZEN: '#5b7795',
+  MISSING: '#e01e5a', DEPRECATED: '#98a2b3', UNKNOWN: '#b0b8c4',
 }[PB.normStatus(s)]);
 
 PB.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -85,8 +87,8 @@ PB.sparkline = (cov, color, w, h) => {
     const missing = (cov[i].key_metric == null);
     const bh = missing ? 0 : Math.max(v > 0 ? 1.5 : 0, (v / max) * (h - 2));
     if (missing || v === 0) {
-      // visible gap marker: a faint baseline tick
-      bars += `<rect x="${(i*bw+pad).toFixed(2)}" y="${h-1.5}" width="${(bw-2*pad).toFixed(2)}" height="1.5" fill="#3a2326"/>`;
+      // visible gap marker on light bg: a soft light-red baseline tick (zero/missing day)
+      bars += `<rect x="${(i*bw+pad).toFixed(2)}" y="${h-2}" width="${(bw-2*pad).toFixed(2)}" height="2" rx="0.5" fill="#f3b6c5"/>`;
     } else {
       bars += `<rect x="${(i*bw+pad).toFixed(2)}" y="${(h-bh).toFixed(2)}" width="${(bw-2*pad).toFixed(2)}" height="${bh.toFixed(2)}" rx="0.6" fill="${color}"/>`;
     }
@@ -103,7 +105,13 @@ PB.columnChart = (cov, color, unitLabel) => {
   const n = cov.length;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const bw = plotW / n, pad = Math.min(bw * 0.16, 6);
-  let bars = '', labels = '';
+  let bars = '', labels = '', grid = '';
+  // Chartbeat-style soft horizontal gridlines (4 bands) + axis baseline.
+  for (let g = 1; g <= 3; g++) {
+    const gy = (padT + (plotH * g / 4)).toFixed(1);
+    grid += `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#eef0f3" stroke-width="1"/>`;
+  }
+  grid += `<line x1="${padL}" y1="${(padT+plotH).toFixed(1)}" x2="${W-padR}" y2="${(padT+plotH).toFixed(1)}" stroke="#d7dce2" stroke-width="1"/>`;
   for (let i = 0; i < n; i++) {
     const v = vals[i], x = padL + i * bw, missing = (v == null);
     const date = cov[i].date || '';
@@ -112,7 +120,7 @@ PB.columnChart = (cov, color, unitLabel) => {
       ? `${date}: no data (gap)`
       : `${date}: ${PB.fmtFull(v)} ${unitLabel} · ${rc} rows`;
     if (missing || v === 0) {
-      bars += `<rect x="${(x+pad).toFixed(1)}" y="${(padT+plotH-2)}" width="${(bw-2*pad).toFixed(1)}" height="2" fill="#5a2c30"><title>${PB.esc(title)}</title></rect>`;
+      bars += `<rect x="${(x+pad).toFixed(1)}" y="${(padT+plotH-2.5)}" width="${(bw-2*pad).toFixed(1)}" height="2.5" rx="0.6" fill="#ef9aae"><title>${PB.esc(title)}</title></rect>`;
     } else {
       const bh = Math.max(2, (v / max) * plotH);
       bars += `<rect x="${(x+pad).toFixed(1)}" y="${(padT+plotH-bh).toFixed(1)}" width="${(bw-2*pad).toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${color}"><title>${PB.esc(title)}</title></rect>`;
@@ -121,12 +129,12 @@ PB.columnChart = (cov, color, unitLabel) => {
     if (i === 0 || i === n - 1 || i === Math.floor(n / 2)) {
       const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
       const lx = i === 0 ? padL : (i === n - 1 ? W - padR : padL + i * bw + bw / 2);
-      labels += `<text x="${lx.toFixed(0)}" y="${H-6}" font-size="10" fill="#6e7b8a" text-anchor="${anchor}">${PB.esc(date.slice(5))}</text>`;
+      labels += `<text x="${lx.toFixed(0)}" y="${H-6}" font-size="10" fill="#667085" text-anchor="${anchor}">${PB.esc(date.slice(5))}</text>`;
     }
   }
   // y max label
-  labels += `<text x="${padL}" y="${padT+8}" font-size="10" fill="#6e7b8a">peak ${PB.fmtInt(max)}</text>`;
-  return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${labels}</svg>`;
+  labels += `<text x="${padL}" y="${padT+8}" font-size="10" font-weight="700" fill="#475467">peak ${PB.fmtInt(max)}</text>`;
+  return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${bars}${labels}</svg>`;
 };
 
 /* ---------- docs helpers ---------- */

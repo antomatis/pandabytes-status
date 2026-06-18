@@ -33,7 +33,7 @@ function hasCoverage(s) {
 /* ---- per-facet row ---- */
 function facetRow(s) {
   const st = PB.normStatus(s.status);
-  const color = s.status == null ? '#8ea2b6' : PB.statusColor(st);
+  const color = s.status == null ? '#1aa6a0' : PB.statusColor(st);  /* derived sources → Chartbeat teal */
   const counts = s.counts || {};
   const headline = counts.headline_total != null ? counts.headline_total
     : (s.key_metric_value != null ? s.key_metric_value : null);
