@@ -5,7 +5,7 @@
 'use strict';
 
 const PB = {
-  API_BASE: 'https://api.restful.zone/v1',
+  API_BASE: '/v1',
   KEY_HEADER: 'X-API-Key',
   LS_KEY: 'pandabytes_api_key',
   SNAPSHOT_URL: 'data/snapshot.json', // relative -> works under /pandabytes-status/

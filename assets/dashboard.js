@@ -132,7 +132,7 @@ function renderAll(snap) {
   renderTable(snap);
   const b = document.getElementById('mode-banner');
   if (snap._live) { b.className = 'banner'; b.style.display = 'block';
-    b.innerHTML = '● Live — refreshed from <code>' + PB.esc(PB.API_BASE) + '</code> at ' + PB.esc(snap.generated_at) + '.'; }
+    b.innerHTML = '● Live — refreshed from <code>' + PB.esc(location.origin + PB.API_BASE) + '</code> at ' + PB.esc(snap.generated_at) + '.'; }
   else { b.style.display = 'none'; }
 }
 

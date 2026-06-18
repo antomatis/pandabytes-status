@@ -60,7 +60,7 @@
       <ol>
         <li>Request a key on the <a href="request.html">Get a key</a> page, or POST your email directly:</li>
       </ol>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://api.restful.zone/v1/keys/request" \
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://pandabytes.restful.zone/v1/keys/request" \
      -H "Content-Type: application/json" \
      -d '{"email":"you@company.com"}'</code></pre>
       <pre><code>{ "ok": true, "data": { "status": "pending", "email": "you@company.com",
@@ -72,13 +72,13 @@
       </ol>
 
       <h2 id="rest">REST API usage</h2>
-      <p>Base URL: <code>https://api.restful.zone/v1</code>. Every response uses the same envelope:
+      <p>Base URL: <code>https://pandabytes.restful.zone/v1</code>. Every response uses the same envelope:
         <code>{ "ok": true, "data": …, "meta": { "generated_at": … } }</code>, and every error is
         <code>{ "ok": false, "error": …, "code": …, "hint": … }</code>.</p>
 
       <h3>Bootstrap (public, no key)</h3>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl https://api.restful.zone/v1
-curl https://api.restful.zone/v1/health</code></pre>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl https://pandabytes.restful.zone/v1
+curl https://pandabytes.restful.zone/v1/health</code></pre>
       <pre><code>{ "ok": true, "data": {
     "status": "ok", "db_ok": true, "db_path": "/DATA/duckdb/pandabytes.db",
     "catalog_built_at": "2026-06-16T13:01:00+03:00", "catalog_age_minutes": 11,
@@ -87,8 +87,8 @@ curl https://api.restful.zone/v1/health</code></pre>
 
       <h3>The source board — <code>GET /v1/sources</code></h3>
       <p>One self-describing row per source. Optional filters <code>?kind=</code>, <code>?status=</code>, <code>?sort=</code>.</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources"
-curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"</code></pre>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/sources"
+curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"</code></pre>
       <pre><code>{ "ok": true, "data": [
     { "id": "ga4", "kind": "metric", "status": "FRESH", "latest_date": "2026-06-17",
       "synced_hours_ago": 0.4, "fact_rows": 28973190,
@@ -102,7 +102,7 @@ curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"
     "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
 
       <h3>Source detail — <code>GET /v1/sources/{id}</code></h3>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources/aol"</code></pre>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/sources/aol"</code></pre>
       <pre><code>{ "ok": true, "data": {
     "id": "aol", "kind": "metric", "status": "FRESH", "catalog_status": "active",
     "key": "page_path", "load": "daily",
@@ -117,7 +117,7 @@ curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"
       <p>One row per calendar day (default 30, max 365). Empty days come back as
         <code>rows: 0, key_metric: null</code> so the x-axis is gap-free — this is exactly what the
         dashboard's column charts plot to surface missing-data days.</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources/aol/coverage?days=30"</code></pre>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/sources/aol/coverage?days=30"</code></pre>
       <pre><code>{ "ok": true, "data": [
     { "date": "2026-06-16", "rows": 547800, "key_metric": 444900 },
     { "date": "2026-06-17", "rows": 547900, "key_metric": 445050 },
@@ -127,7 +127,7 @@ curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"
             "agg": "max", "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
 
       <h3>Hub totals — <code>GET /v1/stats</code></h3>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/stats"</code></pre>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/stats"</code></pre>
       <pre><code>{ "ok": true, "data": {
     "total_fact_rows": 3709203475, "sources_total": 22,
     "status_counts": { "FRESH": 15, "STALE": 1, "STALLED": 0, "MISSING": 1, "FROZEN": 5, "DEPRECATED": 0 },
@@ -153,7 +153,7 @@ curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"
       "args": ["mcp-pandabytes"],
       "env": {
         "PANDABYTES_API_KEY": "YOUR_KEY",
-        "PANDABYTES_API_BASE": "https://api.restful.zone/v1"
+        "PANDABYTES_API_BASE": "https://pandabytes.restful.zone/v1"
       }
     }
   }
@@ -164,14 +164,14 @@ curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"
 
       <h2 id="quickstart">Agent quick-start (3 calls)</h2>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code># 1) discover the surface (no key)
-curl https://api.restful.zone/v1
+curl https://pandabytes.restful.zone/v1
 # 2) request a key, get it approved by email, then:
 KEY=YOUR_KEY
 # 3) read the board, drill in, chart it
-curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources"
-curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources/ga4"
-curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources/ga4/coverage?days=30"
-curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/stats"</code></pre>
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources"
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources/ga4"
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources/ga4/coverage?days=30"
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/stats"</code></pre>
     </div>
   </main>
 
