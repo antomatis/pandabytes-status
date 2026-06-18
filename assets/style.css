@@ -77,22 +77,6 @@ button:disabled { opacity: .5; cursor: default; }
 .keybar .ok { color: var(--fresh); }
 .keybar .warn { color: var(--stale); }
 
-/* ---- top-line stats ---- */
-.statbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px; margin: 18px 0; }
-.stat { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px 16px; }
-.stat .num { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.stat .lbl { font-size: 12px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-.stat .sub { font-size: 12px; color: var(--fg-faint); margin-top: 4px; }
-.stat.warnum .num { color: var(--missing); }
-
-/* ---- status pills row ---- */
-.pillrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 18px; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
-  font-size: 12px; font-weight: 700; background: var(--bg-elev2); border: 1px solid var(--border); }
-.pill .swatch { width: 9px; height: 9px; border-radius: 50%; }
-
 /* ---- source table ---- */
 .section-title { font-size: 15px; font-weight: 700; margin: 26px 0 10px; color: var(--fg);
   display: flex; align-items: center; gap: 10px; }

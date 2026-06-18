@@ -9,37 +9,6 @@ function statusBadge(s) {
   return `<span class="badge b-${st}"><span class="swatch sw-${st}"></span>${st}</span>`;
 }
 
-function renderStats(snap) {
-  const el = document.getElementById('statbar');
-  const srcs = snap.sources || [];
-  const stats = snap.stats || {};
-  const total = stats.sources_total || srcs.length;
-  const factRows = stats.total_fact_rows != null ? stats.total_fact_rows
-    : srcs.reduce((a, s) => a + (Number(s.fact_rows) || 0), 0);
-  const counts = {};
-  PB.STATUS_LIST.concat('UNKNOWN').forEach(s => counts[s] = 0);
-  srcs.forEach(s => counts[PB.normStatus(s.status)]++);
-  const problems = (counts.MISSING || 0) + (counts.STALLED || 0) + (counts.STALE || 0);
-  const ago = PB.parseTs(snap.generated_at);
-  const agoTxt = ago ? timeAgo(ago) : '—';
-
-  el.innerHTML = `
-    <div class="stat"><div class="num">${total}</div><div class="lbl">Data sources</div>
-      <div class="sub">${counts.FRESH} fresh · ${counts.FROZEN} frozen</div></div>
-    <div class="stat"><div class="num">${PB.fmtInt(factRows)}</div><div class="lbl">Total fact rows</div>
-      <div class="sub">${PB.fmtFull(factRows)}</div></div>
-    <div class="stat ${problems ? 'warnum' : ''}"><div class="num">${problems}</div><div class="lbl">Needs attention</div>
-      <div class="sub">${counts.MISSING} missing · ${counts.STALLED} stalled · ${counts.STALE} stale</div></div>
-    <div class="stat"><div class="num" style="font-size:18px">${agoTxt}</div><div class="lbl">Snapshot freshness</div>
-      <div class="sub">live · same-origin</div></div>`;
-
-  // pill row
-  const pr = document.getElementById('pillrow');
-  pr.innerHTML = PB.STATUS_LIST.filter(s => counts[s]).map(s =>
-    `<span class="pill"><span class="swatch sw-${s}"></span>${s} ${counts[s]}</span>`).join('') +
-    (counts.UNKNOWN ? `<span class="pill"><span class="swatch sw-UNKNOWN"></span>UNKNOWN ${counts.UNKNOWN}</span>` : '');
-}
-
 function timeAgo(d) {
   const h = (Date.now() - d.getTime()) / 3.6e6;
   if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min ago';
@@ -131,7 +100,6 @@ function renderAll(snap) {
   SNAP = snap;
   document.getElementById('dash-loading').style.display = 'none';
   renderFreshness(snap);
-  renderStats(snap);
   renderTable(snap);
 }
 
