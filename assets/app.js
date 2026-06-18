@@ -136,7 +136,11 @@ PB.fmtDayLong = (iso) => {
 // (e.g. reddit /r/all firehose, which backfills to full later). They render in a
 // hatched/lighter shade with a small legend so a known boundary step-down doesn't
 // read as a broken/missing-data chart. Omit it and the chart is unchanged.
-PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
+// `newSeriesFrom` (optional ISO yyyy-mm-dd): set when this facet's DAILY series only
+// just began (the whole window sits on/after the live boundary). It re-labels the live
+// legend/tooltip from the Posts-firehose "recovering" copy to "tracking started …",
+// which is the accurate framing for a brand-new series (e.g. reddit Comments).
+PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) => {
   if (!cov || !cov.length) return '<div class="chart-note">No coverage data for this source.</div>';
   const n = cov.length;
   const isLive = (d) => liveFrom && d && String(d) >= String(liveFrom);  // ISO dates compare lexically
@@ -176,6 +180,13 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
     grid += `<text x="${(padL-7).toFixed(1)}" y="${(gy+3.5).toFixed(1)}" class="cc-yt" text-anchor="end">${frac === 0 ? '0' : PB.fmtInt(max * frac)}</text>`;
   }
 
+  // per-chart copy for the live tooltip line: accurate for a brand-new series vs the
+  // established firehose era. Carried on each live bar as data-livetext so the shared
+  // tooltip renderer needs no global state.
+  const liveTipText = newSeriesFrom
+    ? `live · daily tracking started ${PB.fmtDayLong(newSeriesFrom)}`
+    : 'live · firehose now NSFW-complete, volume recovering';
+
   let anyLive = false;
   for (let i = 0; i < n; i++) {
     const v = vals[i], x = padL + (offset + i) * bw + pad, missing = (v == null);
@@ -187,7 +198,7 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
     // data-* drive the JS tooltip (no native <title> — too slow/unstyled)
     const data = `data-d="${PB.esc(PB.fmtDayLong(date))}" data-v="${missing ? '' : PB.esc(PB.fmtFull(v))}"`
       + ` data-vu="${PB.esc(unit)}" data-r="${rc == null ? '' : PB.esc(PB.fmtFull(rc))}" data-gap="${(missing || v === 0) ? '1' : '0'}"`
-      + (live ? ' data-live="1"' : '');
+      + (live ? ` data-live="1" data-livetext="${PB.esc(liveTipText)}"` : '');
     // value-on-top: rotated -90° (reads bottom→top), anchored just above the bar top.
     // gap/zero days show a muted "0" so EVERY bar carries a number.
     if (missing || v === 0) {
@@ -227,7 +238,11 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom) => {
   let legend = '';
   if (anyLive) {
     const ly = 34, rx0 = W - padR;
-    const legText = 'live · NSFW-complete, recovering';
+    // brand-new series → "tracking started <date>"; established live era → the
+    // firehose "NSFW-complete, recovering" copy. (newSeriesFrom is set by the caller.)
+    const legText = newSeriesFrom
+      ? `live · tracking started ${PB.fmtDay(newSeriesFrom)}`
+      : 'live · NSFW-complete, recovering';
     legend = `<text x="${rx0.toFixed(1)}" y="${ly}" class="cc-legend" text-anchor="end">${legText}</text>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="${color}" fill-opacity="0.28"/>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="url(#ccHatch)"/>`;
@@ -278,7 +293,7 @@ PB.wireChartTooltips = (holder) => {
       html += `<div class="cc-tip-v">${PB.esc(v)} <span>${PB.esc(vu)}</span></div>`;
       if (r) html += `<div class="cc-tip-r">${PB.esc(r)} rows</div>`;
       if (bar.getAttribute('data-live') === '1')
-        html += `<div class="cc-tip-live">live · firehose now NSFW-complete, volume recovering</div>`;
+        html += `<div class="cc-tip-live">${PB.esc(bar.getAttribute('data-livetext') || 'live · firehose now NSFW-complete, volume recovering')}</div>`;
     }
     tip.innerHTML = html;
     tip.classList.add('show');

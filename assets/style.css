@@ -214,6 +214,11 @@ button:disabled { opacity: .5; cursor: default; }
 .b-DEPRECATED { background: rgba(152,162,179,.20); color: var(--fg-dim); }
 .b-UNKNOWN    { background: rgba(176,184,196,.22); color: var(--fg-faint); }
 .b-none { background: transparent; color: var(--fg-quiet); font-weight: 600; padding-left: 0; }
+/* "tracking just started" pill — daily series began at the live boundary, so the short
+   chart is expected, not a gap. Teal (matches the derived/Chartbeat accent), sits next
+   to the status badge; wraps under it on narrow facet rows. */
+.b-new { background: rgba(26,166,160,.14); color: #0f7d78; margin-top: 4px; }
+.f-badge { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: flex-start; }
 .sw-FRESH { background: var(--fresh);} .sw-STALE{background:var(--stale);} .sw-STALLED{background:var(--stalled);}
 .sw-FROZEN{background:var(--frozen);} .sw-MISSING{background:var(--missing);} .sw-DEPRECATED{background:var(--deprecated);}
 .sw-UNKNOWN{background:var(--unknown);}

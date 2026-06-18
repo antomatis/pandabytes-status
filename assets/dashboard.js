@@ -30,6 +30,19 @@ function hasCoverage(s) {
   return Array.isArray(s.coverage_30d) && s.coverage_30d.length > 0;
 }
 
+// A facet whose DAILY series only just began: it has a live_from boundary and the
+// whole (short) coverage window sits on/after that boundary — i.e. tracking literally
+// started at live_from, so the mostly-empty 30-day chart is correct, NOT a gap.
+// Returns { started: 'yyyy-mm-dd' } when so, else null. Generic (no hardcoded ids):
+// reddit Comments today, anything that flips to live tracking tomorrow.
+function newSeriesInfo(s) {
+  const cov = s.coverage_30d;
+  const lf = s.live_from;
+  if (!lf || !Array.isArray(cov) || !cov.length || cov.length > 5) return null;
+  const allOnOrAfter = cov.every(p => p.date && String(p.date) >= String(lf));
+  return allOnOrAfter ? { started: cov[0].date } : null;
+}
+
 /* ---- per-facet row ---- */
 function facetRow(s) {
   const st = PB.normStatus(s.status);
@@ -42,6 +55,7 @@ function facetRow(s) {
   const isOpen = expandedFacets.has(s.id);
   const cov = hasCoverage(s);
   const clickable = cov && !covErr;
+  const fresh = newSeriesInfo(s);   // daily series just began? (not a gap)
 
   let sparkCell;
   if (covErr) {
@@ -52,21 +66,34 @@ function facetRow(s) {
     sparkCell = '<span class="no-series">no daily series</span>';
   }
 
+  // "new" pill next to the status badge when daily tracking just started — so the
+  // short/empty-looking sparkline reads as "just began", not broken/stalled.
+  const newPill = fresh
+    ? `<span class="badge b-new" title="daily tracking began ${PB.esc(fresh.started)} — the short series is expected, not a gap">tracking just started</span>`
+    : '';
+
   let html = `<div class="facet${clickable ? ' clickable' : ''}${isOpen ? ' open' : ''}"`
     + ` data-id="${PB.esc(s.id)}"${clickable ? ' role="button" tabindex="0"' : ''}>
     <div class="f-name">${PB.esc(s.facet || s.id)}<small>${PB.esc(s.label || '')}</small></div>
     <div class="f-metric"><b>${PB.fmtInt(headline)}</b><span class="mlbl">${PB.esc(s.key_metric_name || '')}</span></div>
-    <div class="f-badge">${facetBadge(s.status)}</div>
+    <div class="f-badge">${facetBadge(s.status)}${newPill}</div>
     <div class="f-spark">${sparkCell}<div class="synced">${PB.esc(sync.txt)}</div></div>
   </div>`;
 
   if (clickable && isOpen) {
     const metricName = s.key_metric_name || 'rows';
-    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s), s.live_from)}</div></div>`;
+    // when the series just began, tell columnChart so it labels the live bars
+    // "tracking started …" instead of the (Posts-only) "recovering" firehose copy.
+    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s), s.live_from, fresh ? fresh.started : null)}</div></div>`;
     // Source-provided explanation (e.g. reddit archive→firehose boundary), surfaced
     // right under the chart title so a known step-down doesn't read as broken.
     const noteHtml = s.note
       ? `<div class="chart-source-note">${PB.esc(s.note)}</div>` : '';
+    // footer caption: for a just-started series the generic "empty bars = gaps to
+    // investigate" line is wrong (the empty days predate tracking), so swap the copy.
+    const footerNote = fresh
+      ? `Daily ${PB.esc(metricName)} since tracking began ${PB.esc(fresh.started)}. Earlier days are blank because the series didn't exist yet — not a gap.`
+      : `30-day daily ${PB.esc(metricName)}. Empty bars = days with no data (gaps to investigate).`;
     html += `<div class="detail" data-detail="${PB.esc(s.id)}">
       <div class="chart-wrap">
         <div class="chart-meta">
@@ -77,7 +104,7 @@ function facetRow(s) {
         </div>
         ${noteHtml}
         ${chart}
-        <div class="chart-note">30-day daily ${PB.esc(s.key_metric_name || 'metric')}. Empty bars = days with no data (gaps to investigate).</div>
+        <div class="chart-note">${footerNote}</div>
       </div></div>`;
   }
   return html;
