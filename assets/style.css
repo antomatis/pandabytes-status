@@ -179,6 +179,11 @@ code:not(pre code) { background: var(--bg-elev2); padding: 1px 6px; border-radiu
 .banner { background: var(--accent-soft); border: 1px solid #5a4a23; color: #f0d9a8;
   border-radius: var(--radius); padding: 10px 14px; font-size: 13px; margin: 14px 0; }
 .banner.err { background: rgba(248,81,73,.1); border-color: #5a2622; color: #ffb3ad; }
+.freshness { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--fg-faint); margin: 14px 0 4px; }
+.freshness b { color: var(--fg-dim); font-weight: 600; }
+.dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--fresh);
+  box-shadow: 0 0 0 3px rgba(63,185,80,.18); display: inline-block; flex: none; }
 footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-size: 12px;
   padding: 20px 0; margin-top: 40px; }
 .loading { color: var(--fg-faint); padding: 30px; text-align: center; }

@@ -1,23 +1,18 @@
 /* pandabytes status — shared client logic.
-   Pure keyless static JS. The user pastes their API key; it lives only in localStorage.
-   The dashboard renders from a bundled static snapshot by default, and live-refreshes
-   from the REST API when a key is present. No secrets in this repo. */
+   Keyless static JS. The dashboard reads the LIVE same-origin snapshot at
+   /snapshot.json (served by nginx from /DATA/api/snapshot.json, refreshed every
+   ~10 min). No API key, no localStorage. The /v1 REST API stays key-gated for
+   agents/MCP — see docs.html. No secrets in this repo. */
 'use strict';
 
 const PB = {
-  API_BASE: '/v1',
-  KEY_HEADER: 'X-API-Key',
-  LS_KEY: 'pandabytes_api_key',
-  SNAPSHOT_URL: 'data/snapshot.json', // relative -> works under /pandabytes-status/
+  API_BASE: '/v1',                    // REST API base (key-gated; used by docs examples only)
+  SNAPSHOT_URL: '/snapshot.json',     // live same-origin snapshot served by nginx
 
   STATUS_ORDER: { MISSING: 0, STALLED: 1, STALE: 2, DEPRECATED: 3, FROZEN: 4, FRESH: 5, UNKNOWN: 6 },
   STATUS_LIST: ['FRESH', 'STALE', 'STALLED', 'FROZEN', 'MISSING', 'DEPRECATED'],
   PROBLEM: new Set(['MISSING', 'STALLED', 'STALE', 'DEPRECATED']),
 };
-
-/* ---------- API key (localStorage only) ---------- */
-PB.getKey = () => { try { return localStorage.getItem(PB.LS_KEY) || ''; } catch (e) { return ''; } };
-PB.setKey = (k) => { try { k ? localStorage.setItem(PB.LS_KEY, k) : localStorage.removeItem(PB.LS_KEY); } catch (e) {} };
 
 /* ---------- formatting ---------- */
 PB.fmtInt = (n) => {
@@ -68,57 +63,12 @@ PB.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---------- data loading ---------- */
-// Always load the bundled snapshot (fast, keyless). If a key exists, try the live API and
-// merge richer fields; on any failure we silently keep the snapshot. Never blocks the UI.
+// Fetch the LIVE same-origin snapshot. It already carries everything the board needs
+// (sources[] with coverage_30d, plus stats). No key, no localStorage, no /v1 call.
 PB.loadSnapshot = async () => {
   const r = await fetch(PB.SNAPSHOT_URL, { cache: 'no-store' });
   if (!r.ok) throw new Error('snapshot ' + r.status);
   return r.json();
-};
-
-// Try the live REST API. Returns a snapshot-shaped object, or null on any failure.
-PB.loadLive = async (key) => {
-  if (!key) return null;
-  const headers = {}; headers[PB.KEY_HEADER] = key;
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const [sj, stj] = await Promise.all([
-      fetch(PB.API_BASE + '/sources', { headers, signal: ctrl.signal }).then(r => r.ok ? r.json() : Promise.reject(r.status)),
-      fetch(PB.API_BASE + '/stats', { headers, signal: ctrl.signal }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]);
-    clearTimeout(to);
-    if (!sj || sj.ok === false || !Array.isArray(sj.data)) return null;
-    const gen = (sj.meta && sj.meta.generated_at) || new Date().toISOString();
-    const sources = sj.data.map(d => ({
-      id: d.id, kind: d.kind, label: d.label || d.title || d.id,
-      status: d.status, latest_date: d.latest_date, fact_rows: d.fact_rows,
-      days_behind: d.days_behind,
-      key_metric_name: d.key_metric_name, key_metric_unit: d.key_metric_unit || '',
-      synced_hours_ago: d.synced_hours_ago,
-      counts: { headline_total: d.key_metric_value },
-      coverage_30d: [], _needsCoverage: true,
-    }));
-    const stats = (stj && stj.data) ? {
-      sources_total: stj.data.sources_total, total_fact_rows: stj.data.total_fact_rows,
-      ...(stj.data.status_counts || {}),
-    } : null;
-    return { generated_at: gen, sources, stats, _live: true };
-  } catch (e) { clearTimeout(to); return null; }
-};
-
-// fetch one source's coverage live (used on expand when in live mode)
-PB.loadCoverage = async (key, id, days) => {
-  if (!key) return null;
-  const headers = {}; headers[PB.KEY_HEADER] = key;
-  try {
-    const r = await fetch(PB.API_BASE + '/sources/' + encodeURIComponent(id) + '/coverage?days=' + (days || 30), { headers });
-    if (!r.ok) return null;
-    const j = await r.json();
-    if (!j || j.ok === false || !Array.isArray(j.data)) return null;
-    // live coverage uses {date, rows, key_metric}; normalize to snapshot {date,row_count,key_metric}
-    return j.data.map(p => ({ date: p.date, row_count: p.rows, key_metric: p.key_metric }));
-  } catch (e) { return null; }
 };
 
 /* ---------- inline SVG charts (no external deps) ---------- */
@@ -179,30 +129,7 @@ PB.columnChart = (cov, color, unitLabel) => {
   return `<svg class="bigchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${labels}</svg>`;
 };
 
-/* ---------- shared header / key bar wiring ---------- */
-PB.mountKeyBar = (el, onChange) => {
-  const cur = PB.getKey();
-  el.innerHTML = `
-    <label for="pb-key">API key</label>
-    <input id="pb-key" type="password" placeholder="paste your X-API-Key…" autocomplete="off" spellcheck="false" value="${PB.esc(cur)}">
-    <button id="pb-key-save">Save</button>
-    <button id="pb-key-clear" class="ghost">Clear</button>
-    <span id="pb-key-msg" class="hint">${cur ? '<span class="ok">● key saved (localStorage) — live refresh enabled</span>' : 'No key — showing the bundled snapshot. Paste a key to live-refresh from the API. <a href="docs.html#getkey">Get a key →</a>'}</span>
-  `;
-  const input = el.querySelector('#pb-key'), msg = el.querySelector('#pb-key-msg');
-  el.querySelector('#pb-key-save').onclick = () => {
-    PB.setKey(input.value.trim());
-    msg.innerHTML = input.value.trim() ? '<span class="ok">● key saved — refreshing live…</span>' : 'Key cleared.';
-    if (onChange) onChange(input.value.trim());
-  };
-  el.querySelector('#pb-key-clear').onclick = () => {
-    PB.setKey(''); input.value = '';
-    msg.innerHTML = 'Key cleared — showing the bundled snapshot.';
-    if (onChange) onChange('');
-  };
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') el.querySelector('#pb-key-save').click(); });
-};
-
+/* ---------- docs helpers ---------- */
 PB.copyToClipboard = (btn) => {
   const pre = btn.closest('pre'); const code = pre ? pre.querySelector('code') : null;
   const txt = code ? code.innerText : '';

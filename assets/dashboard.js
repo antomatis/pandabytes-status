@@ -31,7 +31,7 @@ function renderStats(snap) {
     <div class="stat ${problems ? 'warnum' : ''}"><div class="num">${problems}</div><div class="lbl">Needs attention</div>
       <div class="sub">${counts.MISSING} missing · ${counts.STALLED} stalled · ${counts.STALE} stale</div></div>
     <div class="stat"><div class="num" style="font-size:18px">${agoTxt}</div><div class="lbl">Snapshot freshness</div>
-      <div class="sub">${snap._live ? 'live from API' : 'bundled snapshot'}</div></div>`;
+      <div class="sub">live · same-origin</div></div>`;
 
   // pill row
   const pr = document.getElementById('pillrow');
@@ -108,7 +108,7 @@ function renderTable(snap) {
   tbl.querySelectorAll('.row[data-id]').forEach(r => {
     const toggle = () => {
       const id = r.getAttribute('data-id');
-      if (expanded.has(id)) expanded.delete(id); else { expanded.add(id); maybeFetchCoverage(id); }
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
       renderTable(SNAP);
     };
     r.onclick = toggle;
@@ -116,24 +116,23 @@ function renderTable(snap) {
   });
 }
 
-// in live mode, the board endpoint doesn't carry coverage; fetch it lazily on expand.
-async function maybeFetchCoverage(id) {
-  if (!SNAP._live) return;
-  const s = SNAP.sources.find(x => x.id === id);
-  if (!s || !s._needsCoverage) return;
-  const cov = await PB.loadCoverage(PB.getKey(), id, 30);
-  if (cov) { s.coverage_30d = cov; s._needsCoverage = false; if (expanded.has(id)) renderTable(SNAP); }
+// Show "updated <generated_at>" freshness line (replaces the old key banner).
+function renderFreshness(snap) {
+  const el = document.getElementById('freshness');
+  if (!el) return;
+  const d = PB.parseTs(snap.generated_at);
+  const rel = d ? ' (' + timeAgo(d) + ')' : '';
+  el.innerHTML = '<span class="dot-live"></span>Live — updated <b>' +
+    PB.esc(snap.generated_at || '—') + '</b>' + rel +
+    ' · auto-refreshes every 5&nbsp;min · same-origin, no key needed.';
 }
 
 function renderAll(snap) {
   SNAP = snap;
   document.getElementById('dash-loading').style.display = 'none';
+  renderFreshness(snap);
   renderStats(snap);
   renderTable(snap);
-  const b = document.getElementById('mode-banner');
-  if (snap._live) { b.className = 'banner'; b.style.display = 'block';
-    b.innerHTML = '● Live — refreshed from <code>' + PB.esc(location.origin + PB.API_BASE) + '</code> at ' + PB.esc(snap.generated_at) + '.'; }
-  else { b.style.display = 'none'; }
 }
 
 async function boot() {
@@ -141,28 +140,21 @@ async function boot() {
   try { snap = await PB.loadSnapshot(); }
   catch (e) {
     document.getElementById('dash-loading').innerHTML =
-      '<span class="src-err">Could not load bundled snapshot (' + PB.esc(e.message) + ').</span>';
+      '<span class="src-err">Could not load live snapshot (' + PB.esc(e.message) + ').</span>';
     return;
   }
   renderAll(snap);
-  // if a key is present, try live in the background (never blocks)
-  const key = PB.getKey();
-  if (key) {
-    const live = await PB.loadLive(key);
-    if (live) { expanded.clear(); renderAll(live); }
-  }
 }
 
-function onKeyChange(key) {
-  if (!key) { boot(); return; }
-  PB.loadLive(key).then(live => {
-    const m = document.getElementById('pb-key-msg');
-    if (live) { expanded.clear(); renderAll(live); if (m) m.innerHTML = '<span class="ok">● live refresh OK</span>'; }
-    else if (m) m.innerHTML = '<span class="warn">● key set, but live API unreachable (CORS/invalid key/offline) — showing snapshot. <a href="docs.html#getkey">Need a key?</a></span>';
-  });
+// periodic live refresh (~5 min); preserves expanded rows, silent on transient errors.
+async function refresh() {
+  try {
+    const snap = await PB.loadSnapshot();
+    if (snap) renderAll(snap);
+  } catch (e) { /* keep current view on a transient fetch error */ }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  PB.mountKeyBar(document.getElementById('keybar'), onKeyChange);
   boot();
+  setInterval(refresh, 5 * 60 * 1000);
 });

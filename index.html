@@ -15,14 +15,12 @@
       <nav class="top">
         <a href="index.html" class="active">Dashboard</a>
         <a href="docs.html">Docs &amp; API</a>
-        <a href="request.html">Get a key</a>
       </nav>
     </div>
   </header>
 
   <main class="wrap">
-    <div id="keybar" class="keybar"></div>
-    <div id="mode-banner" class="banner" style="display:none"></div>
+    <div id="freshness" class="freshness"></div>
 
     <div id="statbar" class="statbar"></div>
     <div id="pillrow" class="pillrow"></div>
@@ -34,15 +32,16 @@
     <div id="srctbl" class="tbl"></div>
 
     <p class="tip" style="margin-top:14px">
-      The dashboard renders instantly from a <b>bundled snapshot</b> (no key needed). Paste your API key above to
-      live-refresh straight from <code>https://pandabytes.restful.zone/v1</code>. The key is stored only in your browser's
-      localStorage — it is never sent anywhere except the API.
+      Live status of the pandabytes data hub, served same-origin from
+      <code>/snapshot.json</code> and refreshed automatically every few minutes — no key needed.
+      Programmatic access (for agents/MCP) is via the key-gated REST API; see the
+      <a href="docs.html">Docs &amp; API</a> page.
     </p>
   </main>
 
   <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. Static GitHub Pages site, no backend, no secrets.
-    · <a href="docs.html">REST API docs</a> · <a href="request.html">Request a key</a>
+    pandabytes — read-only data-hub status. Live same-origin snapshot, no key needed.
+    · <a href="docs.html">REST API docs</a>
   </div></footer>
 
   <script src="assets/app.js"></script>
