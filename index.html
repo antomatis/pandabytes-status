@@ -3,10 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pandabytes status</title>
+  <title>pandabytes — status dashboard</title>
+  <meta name="description" content="Live status dashboard for the pandabytes data hub: source freshness, 30-day coverage charts, and fact-row totals over BoredPanda's content-performance catalog.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d9a441'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <h1>pandabytes status</h1>
-  <p>Placeholder. Status page coming soon.</p>
+  <header class="site">
+    <div class="wrap">
+      <div class="brand"><span class="dot"></span> pandabytes <small>status</small></div>
+      <nav class="top">
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="docs.html">Docs &amp; API</a>
+        <a href="request.html">Get a key</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="keybar" class="keybar"></div>
+    <div id="mode-banner" class="banner" style="display:none"></div>
+
+    <div id="statbar" class="statbar"></div>
+    <div id="pillrow" class="pillrow"></div>
+
+    <div class="section-title">Source board
+      <span class="muted">— problems on top · click any row for the full 30-day coverage chart</span>
+    </div>
+    <div id="dash-loading" class="loading">Loading snapshot…</div>
+    <div id="srctbl" class="tbl"></div>
+
+    <p class="tip" style="margin-top:14px">
+      The dashboard renders instantly from a <b>bundled snapshot</b> (no key needed). Paste your API key above to
+      live-refresh straight from <code>https://api.restful.zone/v1</code>. The key is stored only in your browser's
+      localStorage — it is never sent anywhere except the API.
+    </p>
+  </main>
+
+  <footer class="site"><div class="wrap">
+    pandabytes — read-only data-hub status. Static GitHub Pages site, no backend, no secrets.
+    · <a href="docs.html">REST API docs</a> · <a href="request.html">Request a key</a>
+  </div></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/dashboard.js"></script>
 </body>
 </html>

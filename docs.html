@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pandabytes — docs &amp; REST API</title>
+  <meta name="description" content="What pandabytes is, the source catalog, how to get an API key, REST usage with curl + JSON examples, and the pandabytes MCP install snippet.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d9a441'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <div class="brand"><span class="dot"></span> pandabytes <small>status</small></div>
+      <nav class="top">
+        <a href="index.html">Dashboard</a>
+        <a href="docs.html" class="active">Docs &amp; API</a>
+        <a href="request.html">Get a key</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="doc">
+      <h2 id="what">What is pandabytes?</h2>
+      <p><b>pandabytes</b> is BoredPanda's central content-performance data hub — a single source of
+        truth that unifies editorial publishing, audience analytics, social reach, ad data, and the
+        Reddit reference corpus into one DuckDB + parquet catalog. Every upstream source (GA4,
+        Chartbeat, MSN, AOL, Google News, Pinterest, Facebook, the gateway publishing spine, Reddit,
+        and more) is ingested into tidy daily <i>facts</i>, with a freshness view that tells you, at a
+        glance, which sources are current and which need attention.</p>
+      <p>The hub exposes a small, <b>read-only</b> HTTP/JSON REST API designed for AI agents and
+        dashboards. An API call <i>never</i> triggers an upstream fetch — it only reads the
+        already-built catalog — so any query volume is safe and quota-free. This site is a static,
+        keyless front-end over that API: the <a href="index.html">dashboard</a> renders from a bundled
+        snapshot and live-refreshes when you paste a key.</p>
+
+      <h3>Status &amp; kind enums</h3>
+      <p>Every source has a <code>kind</code> and a freshness <code>status</code>:</p>
+      <table>
+        <tr><th>status</th><th>meaning</th></tr>
+        <tr><td><code>FRESH</code></td><td>data is within its cadence window</td></tr>
+        <tr><td><code>STALE</code></td><td>newest complete day is older than the stale threshold</td></tr>
+        <tr><td><code>STALLED</code></td><td>was fresh, but no new rows for several cadences (not yet past stale)</td></tr>
+        <tr><td><code>MISSING</code></td><td>active in the catalog but 0 rows on the box</td></tr>
+        <tr><td><code>FROZEN</code></td><td>intentionally not updated (historical / locked source)</td></tr>
+        <tr><td><code>DEPRECATED</code></td><td>catalog lifecycle is deprecated / retired</td></tr>
+      </table>
+      <p><code>kind</code> is one of: <code>spine</code> · <code>metric</code> · <code>reference</code> ·
+        <code>vector</code> · <code>federated</code> · <code>derived</code>.</p>
+
+      <h2 id="catalog">Source catalog</h2>
+      <p>The hub currently tracks these sources (live from the latest snapshot):</p>
+      <div id="catalog" class="catalog-grid"></div>
+
+      <h2 id="getkey">How to get an API key</h2>
+      <p>The API uses a single <b>read-only</b> key, passed as the <code>X-API-Key</code> header (or the
+        <code>?key=</code> query param — the query param wins if both are present). <code>GET /v1</code>
+        and <code>GET /v1/health</code> are public so an agent can bootstrap before it has a key.</p>
+      <ol>
+        <li>Request a key on the <a href="request.html">Get a key</a> page, or POST your email directly:</li>
+      </ol>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://api.restful.zone/v1/keys/request" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"you@company.com"}'</code></pre>
+      <pre><code>{ "ok": true, "data": { "status": "pending", "email": "you@company.com",
+  "request_id": "req_7Fa1c9d2",
+  "message": "approval link emailed to the operator; you'll receive your key once approved" } }</code></pre>
+      <ol start="2">
+        <li>The operator approves by email; your key is <b>emailed to you</b> (never returned in a body).</li>
+        <li>Save the key on the <a href="index.html">dashboard</a> (localStorage) or use it in requests below.</li>
+      </ol>
+
+      <h2 id="rest">REST API usage</h2>
+      <p>Base URL: <code>https://api.restful.zone/v1</code>. Every response uses the same envelope:
+        <code>{ "ok": true, "data": …, "meta": { "generated_at": … } }</code>, and every error is
+        <code>{ "ok": false, "error": …, "code": …, "hint": … }</code>.</p>
+
+      <h3>Bootstrap (public, no key)</h3>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl https://api.restful.zone/v1
+curl https://api.restful.zone/v1/health</code></pre>
+      <pre><code>{ "ok": true, "data": {
+    "status": "ok", "db_ok": true, "db_path": "/DATA/duckdb/pandabytes.db",
+    "catalog_built_at": "2026-06-16T13:01:00+03:00", "catalog_age_minutes": 11,
+    "sources_total": 22 },
+  "meta": { "generated_at": "2026-06-16T13:12:00+03:00" } }</code></pre>
+
+      <h3>The source board — <code>GET /v1/sources</code></h3>
+      <p>One self-describing row per source. Optional filters <code>?kind=</code>, <code>?status=</code>, <code>?sort=</code>.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources"
+curl "https://api.restful.zone/v1/sources?kind=metric&status=FRESH&key=YOUR_KEY"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "id": "ga4", "kind": "metric", "status": "FRESH", "latest_date": "2026-06-17",
+      "synced_hours_ago": 0.4, "fact_rows": 28973190,
+      "key_metric_name": "pageviews", "key_metric_value": 1176520635 },
+    { "id": "gsc", "kind": "metric", "status": "MISSING", "latest_date": null,
+      "synced_hours_ago": null, "fact_rows": 0,
+      "key_metric_name": "impressions", "key_metric_value": null }
+  ],
+  "meta": { "count": 22,
+    "status_counts": { "FRESH": 15, "STALE": 1, "STALLED": 0, "MISSING": 1, "FROZEN": 5, "DEPRECATED": 0 },
+    "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
+
+      <h3>Source detail — <code>GET /v1/sources/{id}</code></h3>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources/aol"</code></pre>
+      <pre><code>{ "ok": true, "data": {
+    "id": "aol", "kind": "metric", "status": "FRESH", "catalog_status": "active",
+    "key": "page_path", "load": "daily",
+    "title": "AOL.com competitor engagement (Spot.IM comment counts)",
+    "latest_date": "2026-06-18", "earliest_date": "2026-05-01",
+    "synced_hours_ago": 0.2, "days_behind": 0, "fact_rows": 547867, "distinct_keys": 41207,
+    "key_metric_name": "articles", "key_metric_value": 445169,
+    "metrics": [ { "name": "aol_comments", "unit": "count", "agg": "max", "canonical": false } ] },
+  "meta": { "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
+
+      <h3>30-day coverage — <code>GET /v1/sources/{id}/coverage?days=30</code></h3>
+      <p>One row per calendar day (default 30, max 365). Empty days come back as
+        <code>rows: 0, key_metric: null</code> so the x-axis is gap-free — this is exactly what the
+        dashboard's column charts plot to surface missing-data days.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/sources/aol/coverage?days=30"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "date": "2026-06-16", "rows": 547800, "key_metric": 444900 },
+    { "date": "2026-06-17", "rows": 547900, "key_metric": 445050 },
+    { "date": "2026-06-18", "rows": 547867, "key_metric": 445169 }
+  ],
+  "meta": { "id": "aol", "days": 30, "key_metric_name": "articles", "unit": "articles",
+            "agg": "max", "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
+
+      <h3>Hub totals — <code>GET /v1/stats</code></h3>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://api.restful.zone/v1/stats"</code></pre>
+      <pre><code>{ "ok": true, "data": {
+    "total_fact_rows": 3709203475, "sources_total": 22,
+    "status_counts": { "FRESH": 15, "STALE": 1, "STALLED": 0, "MISSING": 1, "FROZEN": 5, "DEPRECATED": 0 },
+    "biggest_tables": [ { "id": "reddit", "fact_rows": 3588257275 },
+                        { "id": "chartbeat", "fact_rows": 72436437 } ] } }</code></pre>
+
+      <h3>Error envelope</h3>
+      <pre><code>{ "ok": false, "error": "missing or invalid API key", "code": "unauthorized",
+  "hint": "pass ?key=YOUR_KEY or the X-API-Key header; request one via POST /v1/keys/request" }</code></pre>
+      <p>Stable <code>code</code> values: <code>unauthorized</code>, <code>source_not_found</code>,
+        <code>bad_request</code>, <code>invalid_param</code>, <code>db_unavailable</code>,
+        <code>token_spent</code>, <code>rate_limited</code>, <code>internal</code>.</p>
+
+      <h2 id="mcp">pandabytes MCP server</h2>
+      <p>The hub ships an <b>MCP</b> (Model Context Protocol) server so AI agents can query the catalog
+        natively. Install it with <code>uvx</code> and point it at your key:</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>uvx mcp-pandabytes</code></pre>
+      <p>Configure it in your MCP client (e.g. Claude Desktop / Claude Code <code>mcp.json</code>):</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>{
+  "mcpServers": {
+    "pandabytes": {
+      "command": "uvx",
+      "args": ["mcp-pandabytes"],
+      "env": {
+        "PANDABYTES_API_KEY": "YOUR_KEY",
+        "PANDABYTES_API_BASE": "https://api.restful.zone/v1"
+      }
+    }
+  }
+}</code></pre>
+      <p>The MCP exposes the same read-only surface as the REST API (source board, source detail,
+        30-day coverage, hub stats), so an agent can ask "which pandabytes sources are stale?" or
+        "chart GA4 pageviews for the last 30 days" without writing any HTTP code.</p>
+
+      <h2 id="quickstart">Agent quick-start (3 calls)</h2>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code># 1) discover the surface (no key)
+curl https://api.restful.zone/v1
+# 2) request a key, get it approved by email, then:
+KEY=YOUR_KEY
+# 3) read the board, drill in, chart it
+curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources"
+curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources/ga4"
+curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/sources/ga4/coverage?days=30"
+curl -H "X-API-Key: $KEY" "https://api.restful.zone/v1/stats"</code></pre>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap">
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="request.html">Request a key</a>
+  </div></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/catalog.js"></script>
+  <script>
+  (function () {
+    const c = document.getElementById('catalog');
+    const cat = window.PB_CATALOG || [];
+    c.innerHTML = cat.map(s => `
+      <div class="catalog-card">
+        <span class="ckind">${PB.esc(s.kind)}</span>
+        <div class="cid">${PB.esc(s.id)}</div>
+        <div class="clabel">${PB.esc(s.label)}</div>
+        <div class="cmetric">★ ${PB.esc(s.key_metric_name)} <span class="tip">(${PB.esc(s.key_metric_unit)})</span></div>
+      </div>`).join('');
+  })();
+  </script>
+</body>
+</html>

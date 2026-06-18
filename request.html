@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pandabytes — request an API key</title>
+  <meta name="description" content="Request a read-only API key for the pandabytes data hub. Operator-approved by email.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d9a441'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <div class="brand"><span class="dot"></span> pandabytes <small>status</small></div>
+      <nav class="top">
+        <a href="index.html">Dashboard</a>
+        <a href="docs.html">Docs &amp; API</a>
+        <a href="request.html" class="active">Get a key</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="section-title">Request a read-only API key</div>
+    <p class="tip">
+      The pandabytes API uses a single <b>read-only</b> key, passed as the <code>X-API-Key</code> header
+      (or <code>?key=</code> query param). Requests are <b>operator-approved by email</b>: submit your
+      address below, the operator gets an approval link, and the key is emailed to you once approved
+      (it is never returned in a response body).
+    </p>
+
+    <div class="formcard">
+      <h3>POST /v1/keys/request</h3>
+      <div class="field">
+        <input id="email" type="email" placeholder="you@company.com" autocomplete="email" spellcheck="false">
+        <button id="submit">Request key</button>
+      </div>
+      <div id="result" class="result"></div>
+      <p class="tip" style="margin-bottom:0">
+        Endpoint: <code>POST https://api.restful.zone/v1/keys/request</code> with JSON body
+        <code>{"email":"…"}</code>. Returns <code>202 Accepted</code> with a <code>request_id</code>.
+      </p>
+    </div>
+
+    <div class="formcard" style="margin-top:18px">
+      <h3>Prefer curl?</h3>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://api.restful.zone/v1/keys/request" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"you@company.com"}'</code></pre>
+      <p class="tip" style="margin-bottom:0">Once approved &amp; emailed, save the key on the
+        <a href="index.html">dashboard</a> to live-refresh, or read the <a href="docs.html">API docs</a>.</p>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap">
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs</a>
+  </div></footer>
+
+  <script src="assets/app.js"></script>
+  <script>
+  document.getElementById('submit').onclick = async () => {
+    const email = document.getElementById('email').value.trim();
+    const res = document.getElementById('result');
+    const btn = document.getElementById('submit');
+    res.className = 'result show'; res.textContent = '';
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      res.classList.add('err'); res.textContent = 'Please enter a valid email address.'; return;
+    }
+    btn.disabled = true; res.textContent = 'Submitting request…';
+    try {
+      const r = await fetch(PB.API_BASE + '/keys/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && j.ok !== false) {
+        res.classList.remove('err'); res.classList.add('ok');
+        const d = (j && j.data) || {};
+        res.innerHTML = '✓ Request received' + (d.request_id ? ' (<code>' + PB.esc(d.request_id) + '</code>)' : '') +
+          '.<br>' + PB.esc(d.message || 'An approval link was emailed to the operator; you will receive your key once approved.');
+      } else {
+        res.classList.remove('ok'); res.classList.add('err');
+        const msg = (j && (j.error || j.hint)) || ('HTTP ' + r.status);
+        res.textContent = 'Request failed: ' + msg;
+      }
+    } catch (e) {
+      res.classList.remove('ok'); res.classList.add('err');
+      res.innerHTML = 'Could not reach the API (network/CORS). Submit the request with the curl command above instead.';
+    } finally { btn.disabled = false; }
+  };
+  document.getElementById('email').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('submit').click(); });
+  </script>
+</body>
+</html>
