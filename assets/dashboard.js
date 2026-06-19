@@ -443,7 +443,10 @@ function renderUsage(snap) {
      issue   — STALE / STALLED / MISSING / DEPRECATED *that is not deliberately paused*
      paused  — pausedInfo(s) → FROZEN or prose-declared PAUSED (a chosen hold)
      derived — no status (derived/pending vectors etc.)
-   Verdict: "All fresh" when no issues, "Attention" (amber) when any issue exists. */
+   Verdict: "All fresh" only when every source is literally FRESH; "All healthy" when
+   there are no issues but some sources are a deliberate hold (paused/frozen) or derived
+   — so the verdict never contradicts a "N paused" segment; "Attention" (amber) when any
+   issue exists. */
 function hubPulse(snap) {
   const sources = snap.sources || [];
   let fresh = 0, issue = 0, paused = 0, derived = 0;
@@ -464,9 +467,13 @@ function renderPulse(snap) {
   if (!el) return;
   const p = hubPulse(snap);
   const attn = p.issue > 0;
+  // "All fresh" only when every source is literally fresh; otherwise (no issues, but some
+  // deliberately paused/frozen or derived) say "All healthy" so the verdict never reads as
+  // contradicting a "N paused" / "N derived" segment beside it.
+  const allFresh = p.fresh === p.total;
   const verdict = attn
     ? (p.issue === 1 ? '1 needs attention' : `${p.issue} need attention`)
-    : 'All fresh';
+    : (allFresh ? 'All fresh' : 'All healthy');
 
   // segments in priority order; only render the ones that are non-zero (issue is always
   // shown when present). Each is a small status dot + count + label.
