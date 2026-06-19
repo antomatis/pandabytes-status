@@ -7,13 +7,6 @@ let SNAP = null;             // current snapshot-shaped data being rendered
 const expandedFacets = new Set();   // facet ids whose 30-day column chart is open
 const collapsedGroups = new Set();  // group ids the user has collapsed
 
-function timeAgo(d) {
-  const h = (Date.now() - d.getTime()) / 3.6e6;
-  if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min ago';
-  if (h < 36) return Math.round(h) + 'h ago';
-  return Math.round(h / 24) + 'd ago';
-}
-
 function unitLabel(s) {
   return s.key_metric_unit && s.key_metric_unit !== s.key_metric_name
     ? s.key_metric_unit : (s.key_metric_name || 'rows');
@@ -267,17 +260,6 @@ function wireBoard() {
   });
 }
 
-// Show "Live — updated <generated_at>" freshness line.
-function renderFreshness(snap) {
-  const el = document.getElementById('freshness');
-  if (!el) return;
-  const d = PB.parseTs(snap.generated_at);
-  const rel = d ? ' (' + timeAgo(d) + ')' : '';
-  el.innerHTML = '<span class="dot-live"></span>Live — updated <b>' +
-    PB.esc(snap.generated_at || '—') + '</b>' + rel +
-    ' · auto-refreshes every 5&nbsp;min · same-origin, no key needed.';
-}
-
 // Default collapse policy, applied once on first render: collapse "other" and any
 // group whose facets are all frozen/derived (no fresh, no issues).
 let defaultsApplied = false;
@@ -303,7 +285,6 @@ function renderAll(snap) {
   const loading = document.getElementById('dash-loading');
   if (loading) loading.style.display = 'none';
   applyDefaultCollapse(snap);
-  renderFreshness(snap);
   renderBoard(snap);
 }
 

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pandabytes — MCP server</title>
+  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: uvx mcp-pandabytes install + mcp.json config, and the 10 read-only tools (5 freshness/catalog + 5 editorial KPI) it exposes to AI agents.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d74b1f'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <div class="brand"><span class="dot"></span> pandabytes <small>status</small></div>
+      <nav class="top">
+        <a href="index.html">Dashboard</a>
+        <a href="docs.html">Docs &amp; API</a>
+        <a href="mcp.html" class="active">MCP</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap doc-layout">
+    <!-- in-page section nav: sticky on desktop, a horizontal scroll-strip on mobile.
+         Links jump to the H2 ids below; scroll-spy (app.js) marks the section in view. -->
+    <aside class="doc-toc" aria-label="On this page">
+      <div class="doc-toc-title">On this page</div>
+      <nav class="doc-toc-nav">
+        <a href="#mcp">MCP server</a>
+        <a href="#install">Install &amp; configure</a>
+        <a href="#tools">The 10 tools</a>
+        <a href="#freshness-tools">Freshness &amp; catalog</a>
+        <a href="#editorial-tools">Editorial KPIs</a>
+      </nav>
+    </aside>
+    <div class="doc">
+      <h2 id="mcp">pandabytes MCP server</h2>
+      <p>The hub ships an <b>MCP</b> (Model Context Protocol) server so AI agents can query the catalog
+        natively — no HTTP plumbing. It wraps the same <b>read-only</b> surface as the
+        <a href="docs.html#rest">REST API</a>: an MCP call never triggers an upstream fetch, it only
+        reads the already-built catalog, so any query volume is safe and quota-free. The tools mirror
+        the REST field names verbatim, and errors surface as the REST error envelope
+        (<code>{ ok:false, error, code, hint }</code>) so an agent can self-correct on <code>hint</code>.</p>
+      <p>The MCP exposes both the freshness tools (source board, source detail, 30-day coverage, hub
+        stats, gap finder) and the editorial KPI tools (top articles, per-article performance, top
+        authors / categories / teams) — so an agent can ask "which pandabytes sources are stale?",
+        "chart GA4 pageviews for the last 30 days", or "who were our top authors by pageviews this
+        month?" without writing any HTTP code.</p>
+
+      <h2 id="install">Install &amp; configure</h2>
+      <p>Install it with <code>uvx</code> and point it at your key:</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>uvx mcp-pandabytes</code></pre>
+      <p>Configure it in your MCP client (e.g. Claude Desktop / Claude Code <code>mcp.json</code>):</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>{
+  "mcpServers": {
+    "pandabytes": {
+      "command": "uvx",
+      "args": ["mcp-pandabytes"],
+      "env": {
+        "PANDABYTES_API_KEY": "YOUR_KEY",
+        "PANDABYTES_API_BASE": "https://pandabytes.restful.zone/v1"
+      }
+    }
+  }
+}</code></pre>
+      <p>Need a key? Request one on the <a href="request.html">Get a key</a> page — the operator
+        approves by email and your key is emailed to you. <code>list_sources</code>,
+        <code>get_stats</code> and friends are read-only and quota-free once you have it.</p>
+
+      <h2 id="tools">The 10 tools</h2>
+      <p>Ten tools in two families — <b>5 freshness/catalog</b> + <b>5 editorial KPI</b> — each a thin
+        read-only call to the REST API. Field names mirror the
+        <a href="docs.html#rest">REST contract</a> verbatim. Status enum:
+        <code>FRESH · STALE · STALLED · MISSING · FROZEN · DEPRECATED</code>; kind enum:
+        <code>spine · metric · reference · vector · federated · derived</code>.</p>
+
+      <h3 id="freshness-tools">Freshness &amp; catalog</h3>
+      <div class="doc-table-scroll">
+      <table class="mcp-tools">
+        <tr><th>tool</th><th>what it does</th><th>REST</th></tr>
+        <tr>
+          <td><code>list_sources(kind?, status?)</code></td>
+          <td>The freshness board — every source + health at a glance; find STALE/MISSING/STALLED; pick an id. Optional <code>kind</code>/<code>status</code> filters.</td>
+          <td><code>GET /v1/sources</code></td>
+        </tr>
+        <tr>
+          <td><code>get_source_status(id)</code></td>
+          <td>One source in depth: metrics, key, cadence (<code>load</code>), <code>days_behind</code>, earliest/latest date, notes.</td>
+          <td><code>GET /v1/sources/{id}</code></td>
+        </tr>
+        <tr>
+          <td><code>get_coverage(id, days=30)</code></td>
+          <td>Daily coverage timeseries (gap-free, every day present) — reason about dips/ramps/holes over time. <code>days</code> 1..365.</td>
+          <td><code>GET /v1/sources/{id}/coverage</code></td>
+        </tr>
+        <tr>
+          <td><code>get_stats()</code></td>
+          <td>Hub top-line counts — total fact rows, sources total, status tally, biggest tables. "How big is the hub?"</td>
+          <td><code>GET /v1/stats</code></td>
+        </tr>
+        <tr>
+          <td><code>find_gaps(id, days=30)</code></td>
+          <td>Only the HOLES — zero-row days <em>inside</em> a source's active range, not the full series.</td>
+          <td><code>GET /v1/sources/{id}/coverage</code></td>
+        </tr>
+      </table>
+      </div>
+
+      <h3 id="editorial-tools">Editorial KPIs</h3>
+      <div class="doc-table-scroll">
+      <table class="mcp-tools">
+        <tr><th>tool</th><th>what it does</th><th>REST</th></tr>
+        <tr>
+          <td><code>get_top_articles(metric="pageviews", days=30, limit=20)</code></td>
+          <td>Rank articles by a metric over a window. "Best-performing articles this month."</td>
+          <td><code>GET /v1/articles/top</code></td>
+        </tr>
+        <tr>
+          <td><code>get_article(page_path)</code></td>
+          <td>One article + cross-source metrics: metadata + all-time canonical KPIs + per-source breakdown.</td>
+          <td><code>GET /v1/articles?path=</code></td>
+        </tr>
+        <tr>
+          <td><code>get_author_performance(days=30, limit=50)</code></td>
+          <td>Author leaderboard — article count, pageviews, avg engagement time, time-spent. "Which authors drove the most traffic?"</td>
+          <td><code>GET /v1/perf/author</code></td>
+        </tr>
+        <tr>
+          <td><code>get_category_performance(days=30, limit=50)</code></td>
+          <td>Category leaderboard (primary category) — compare verticals: Relationships, Curiosities, Funny, …</td>
+          <td><code>GET /v1/perf/category</code></td>
+        </tr>
+        <tr>
+          <td><code>get_team_performance(days=30, limit=50)</code></td>
+          <td>Team leaderboard, grouped by editorial <code>team_id</code> (gateway category taxonomy). "How did each team perform?"</td>
+          <td><code>GET /v1/perf/team</code></td>
+        </tr>
+      </table>
+      </div>
+      <p class="tip">Every tool returns a single JSON object; full field-by-field shapes are in the
+        <a href="docs.html#rest">REST API usage</a> and <a href="docs.html#editorial">Editorial
+        performance</a> sections of the docs (the MCP tools return the same payloads).</p>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap">
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="request.html">Request a key</a>
+  </div></footer>
+
+  <script src="assets/app.js"></script>
+  <script>
+  /* keyless docs chrome, shared with docs.html: hover/focus "#" deep-link anchors on
+     every heading, plus the TOC scroll-spy that marks the section currently in view. */
+  if (typeof PB !== 'undefined' && PB.initHeadingAnchors) PB.initHeadingAnchors();
+  if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+  (function () {
+    const toc = document.querySelector('.doc-toc-nav');
+    if (!toc || !('IntersectionObserver' in window)) return;
+    const links = Array.from(toc.querySelectorAll('a'));
+    const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+    const heads = links
+      .map(a => document.getElementById(a.getAttribute('href').slice(1)))
+      .filter(Boolean);
+    if (!heads.length) return;
+    const visible = new Set();
+    const mark = () => {
+      let activeId = null, best = Infinity;
+      for (const id of visible) {
+        const top = document.getElementById(id).getBoundingClientRect().top;
+        if (top < best) { best = top; activeId = id; }
+      }
+      if (!activeId) return;
+      links.forEach(a => a.classList.remove('active'));
+      const a = byId.get(activeId);
+      if (a) a.classList.add('active');
+    };
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) visible.add(e.target.id);
+        else visible.delete(e.target.id);
+      }
+      mark();
+    }, { rootMargin: '-90px 0px -65% 0px', threshold: 0 });
+    heads.forEach(h => obs.observe(h));
+  })();
+  </script>
+</body>
+</html>

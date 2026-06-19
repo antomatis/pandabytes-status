@@ -374,6 +374,13 @@ button:disabled { opacity: .5; cursor: default; }
 .doc th, .doc td { text-align: left; padding: 8px 11px; border-bottom: 1px solid var(--border-soft); }
 .doc th { color: var(--fg-faint); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
 .doc td code { font-size: 12px; }
+/* MCP tool tables: signatures can be long, so let cells wrap (no horizontal overflow)
+   and give the first (tool) column a stable minimum so signatures stay readable. */
+.doc table.mcp-tools td:first-child { white-space: normal; }
+.doc table.mcp-tools td code, .doc table.mcp-tools th { overflow-wrap: anywhere; word-break: break-word; }
+/* horizontal-scroll rail for any wide doc table on narrow viewports */
+.doc-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0; }
+.doc-table-scroll > table { margin: 0; }
 pre { background: #0f1b2d; border: 1px solid #16263c; border-radius: var(--radius-sm); padding: 14px 16px;
   overflow-x: auto; font-size: 13px; position: relative; color: #d6e2f0; }
 pre code { color: #d6e2f0; }
@@ -404,16 +411,6 @@ code:not(pre code) { background: var(--surface-3); padding: 1px 6px; border-radi
 .banner { background: var(--accent-soft); border: 1px solid #f4c9b6; color: var(--accent-deep);
   border-radius: var(--radius); padding: 11px 15px; font-size: 13px; margin: 14px 0; }
 .banner.err { background: rgba(224,30,90,.08); border-color: #f5b9cb; color: #c2174c; }
-.freshness { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  font-size: 12px; color: var(--fg-faint); margin: 16px 0 4px; }
-.freshness b { color: var(--fg-dim); font-weight: 600; }
-.dot-live { width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(215,75,31,.18); display: inline-block; flex: none;
-  animation: pulse-live 2.4s ease-in-out infinite; }
-@keyframes pulse-live {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(215,75,31,.18); }
-  50%      { box-shadow: 0 0 0 5px rgba(215,75,31,.08); }
-}
 
 footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-size: 12px;
   padding: 22px 0; margin-top: 44px; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pandabytes — docs &amp; REST API</title>
-  <meta name="description" content="What pandabytes is, the source catalog, how to get an API key, REST usage with curl + JSON examples, and the pandabytes MCP install snippet.">
+  <meta name="description" content="What pandabytes is, the source catalog, how to get an API key, and REST usage with curl + JSON examples. The MCP server install + tools live on the MCP page.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d74b1f'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +18,7 @@
       <nav class="top">
         <a href="index.html">Dashboard</a>
         <a href="docs.html" class="active">Docs &amp; API</a>
+        <a href="mcp.html">MCP</a>
         <a href="request.html">Get a key</a>
       </nav>
     </div>
@@ -35,7 +36,6 @@
         <a href="#getkey">Get an API key</a>
         <a href="#rest">REST API usage</a>
         <a href="#editorial">Editorial performance</a>
-        <a href="#mcp">MCP server</a>
         <a href="#quickstart">Agent quick-start</a>
       </nav>
     </aside>
@@ -277,28 +277,9 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
         <code>bad_request</code>, <code>invalid_param</code>, <code>db_unavailable</code>,
         <code>token_spent</code>, <code>rate_limited</code>, <code>internal</code>.</p>
 
-      <h2 id="mcp">pandabytes MCP server</h2>
-      <p>The hub ships an <b>MCP</b> (Model Context Protocol) server so AI agents can query the catalog
-        natively. Install it with <code>uvx</code> and point it at your key:</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>uvx mcp-pandabytes</code></pre>
-      <p>Configure it in your MCP client (e.g. Claude Desktop / Claude Code <code>mcp.json</code>):</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>{
-  "mcpServers": {
-    "pandabytes": {
-      "command": "uvx",
-      "args": ["mcp-pandabytes"],
-      "env": {
-        "PANDABYTES_API_KEY": "YOUR_KEY",
-        "PANDABYTES_API_BASE": "https://pandabytes.restful.zone/v1"
-      }
-    }
-  }
-}</code></pre>
-      <p>The MCP exposes the same read-only surface as the REST API — both the freshness tools (source
-        board, source detail, 30-day coverage, hub stats) and the editorial KPI tools (top articles,
-        per-article performance, top authors / categories / teams) — so an agent can ask "which
-        pandabytes sources are stale?", "chart GA4 pageviews for the last 30 days", or "who were our
-        top authors by pageviews this month?" without writing any HTTP code.</p>
+      <p>The hub also ships an <b>MCP</b> (Model Context Protocol) server that wraps this same
+        read-only surface as native agent tools — see the <a href="mcp.html">MCP</a> page for the
+        <code>uvx mcp-pandabytes</code> install snippet and the full tool list.</p>
 
       <h2 id="quickstart">Agent quick-start (3 calls)</h2>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code># 1) discover the surface (no key)
@@ -320,7 +301,7 @@ curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles?path=/air
   </main>
 
   <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="request.html">Request a key</a>
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="mcp.html">MCP</a> · <a href="request.html">Request a key</a>
   </div></footer>
 
   <script src="assets/app.js"></script>
