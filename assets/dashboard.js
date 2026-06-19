@@ -257,8 +257,15 @@ function renderBoard(snap) {
     return groupCard(g, facets);
   }).join('');
 
-  board.innerHTML = html
-    || `<div class="loading">No sources in snapshot.</div>`;
+  // board_error banner: shown when pb_snapshot.py fell back to last-good data
+  // (DB write-locked; statuses are stale). Amber, calm — not alarming.
+  const boardErr = snap.board_error;
+  const errBanner = boardErr
+    ? `<div class="board-err-banner">⚠️ Data may be stale — snapshot degraded (${PB.esc(boardErr)}); showing last-good.</div>`
+    : '';
+
+  board.innerHTML = errBanner + (html
+    || `<div class="loading">No sources in snapshot.</div>`);
   wireBoard();
 }
 
@@ -321,12 +328,84 @@ function applyDefaultCollapse(snap) {
   }
 }
 
+
+/* ---- Usage panel ---- */
+function renderUsage(snap) {
+  const panel = document.getElementById('usage-panel');
+  if (!panel) return;
+  const u = snap.usage;
+  if (!u) { panel.innerHTML = ''; return; }
+
+  const ct = u.channel_today || {};
+  const c7 = u.channel_7d   || {};
+  const uu  = u.unique_users_today || 0;
+  const uu7 = u.unique_users_7d   || 0;
+  const series = u.daily_series || [];
+  const note = u.note || '';
+
+  // Channel rows: API, MCP query, MCP agentic
+  const channels = [
+    { key: 'api',         label: 'REST API',    tagClass: 'tag-api', tag: 'direct' },
+    { key: 'mcp_query',   label: 'MCP query',   tagClass: 'tag-mcp', tag: 'mcp' },
+    { key: 'mcp_agentic', label: 'MCP agentic', tagClass: 'tag-mcp', tag: 'mcp' },
+  ];
+
+  const chanHTML = channels.map(ch =>
+    '<div class="usage-channel">' +
+      '<div class="usage-ch-label">' + PB.esc(ch.label) + '</div>' +
+      '<div class="usage-ch-today">' + PB.fmtInt(ct[ch.key] || 0) + '</div>' +
+      '<div class="usage-ch-7d">7d: ' + PB.fmtInt(c7[ch.key] || 0) + ' requests</div>' +
+      '<span class="usage-ch-tag ' + PB.esc(ch.tagClass) + '">' + PB.esc(ch.tag) + '</span>' +
+    '</div>'
+  ).join('');
+
+  // Daily-volume sparkline (total per day, last 30d)
+  let sparkHTML = '';
+  if (series.length) {
+    const vals = series.map(function(r) { return r.total || 0; });
+    const max  = Math.max(1, Math.max.apply(null, vals));
+    const n    = vals.length;
+    const W = 640, H = 36;
+    const bw = W / Math.max(n, 1);
+    const pad = bw * 0.15;
+    let bars = '';
+    for (let i = 0; i < n; i++) {
+      const v   = vals[i];
+      const bh  = v > 0 ? Math.max(2, (v / max) * (H - 2)) : 2;
+      const col = v > 0 ? 'var(--teal)' : 'var(--border)';
+      bars += '<rect x="' + (i*bw+pad).toFixed(1) + '" y="' + (H-bh).toFixed(1) + '" ' +
+              'width="' + (bw-2*pad).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="0.6" fill="' + col + '"/>';
+    }
+    const firstDate = series[0] ? series[0].date : '';
+    const lastDate  = series[series.length - 1] ? series[series.length - 1].date : '';
+    sparkHTML =
+      '<div class="usage-spark-wrap">' +
+        '<div class="usage-spark-title">Daily volume — last ' + n + ' day' + (n === 1 ? '' : 's') + '</div>' +
+        '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
+             'role="img" aria-label="Daily API+MCP request volume">' + bars + '</svg>' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--fg-quiet);margin-top:3px">' +
+          '<span>' + PB.esc(firstDate) + '</span><span>' + PB.esc(lastDate) + '</span>' +
+        '</div>' +
+      '</div>';
+  }
+
+  panel.innerHTML =
+    '<div class="usage-channels">' + chanHTML + '</div>' +
+    sparkHTML +
+    '<div class="usage-footer">' +
+      '<div class="usage-users">Today: <b>' + PB.fmtInt(uu) + '</b> unique caller' + (uu === 1 ? '' : 's') +
+        '  ·  7d: <b>' + PB.fmtInt(uu7) + '</b></div>' +
+      '<div class="usage-note">' + PB.esc(note) + '</div>' +
+    '</div>';
+}
+
 function renderAll(snap) {
   SNAP = snap;
   const loading = document.getElementById('dash-loading');
   if (loading) loading.style.display = 'none';
   applyDefaultCollapse(snap);
   renderBoard(snap);
+  renderUsage(snap);
 }
 
 async function boot() {
