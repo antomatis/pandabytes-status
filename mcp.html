@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pandabytes — MCP server</title>
-  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: uvx mcp-pandabytes install + mcp.json config, and the 10 read-only tools (5 freshness/catalog + 5 editorial KPI) it exposes to AI agents.">
+  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: add it to claude.ai as a remote connector (Streamable HTTP), or run it locally via uvx for Claude Code / Desktop. 10 read-only tools (5 freshness/catalog + 5 editorial KPI).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d74b1f'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,8 @@
       <div class="doc-toc-title">On this page</div>
       <nav class="doc-toc-nav">
         <a href="#mcp">MCP server</a>
-        <a href="#install">Install &amp; configure</a>
+        <a href="#remote">Add to claude.ai</a>
+        <a href="#install">Claude Code / Desktop</a>
         <a href="#tools">The 10 tools</a>
         <a href="#freshness-tools">Freshness &amp; catalog</a>
         <a href="#editorial-tools">Editorial KPIs</a>
@@ -49,9 +50,33 @@
         authors / categories / teams) — so an agent can ask "which pandabytes sources are stale?",
         "chart GA4 pageviews for the last 30 days", or "who were our top authors by pageviews this
         month?" without writing any HTTP code.</p>
+      <p>Two ways to connect, <b>same 10 tools</b>: add it to the <a href="#remote">claude.ai web app
+        as a remote connector</a> (Streamable HTTP, nothing to install), or run it
+        <a href="#install">locally for Claude Code / Desktop</a> over stdio via <code>uvx</code>.</p>
 
-      <h2 id="install">Install &amp; configure</h2>
-      <p>Install it with <code>uvx</code> and point it at your key:</p>
+      <h2 id="remote">Add to claude.ai (remote connector)</h2>
+      <p>The hub is also reachable as a <b>remote MCP connector</b> for the
+        <a href="https://claude.ai">claude.ai</a> web app — no install, no <code>uvx</code>. It serves
+        the <b>same 10 read-only tools</b> over the <b>Streamable HTTP</b> transport at one URL, and the
+        access token rides in the URL query string (<code>?k=</code>), checked at the edge. The hub's
+        own data key stays server-side — the connector never sees it.</p>
+      <p>In claude.ai go to <b>Settings → Connectors → Add custom connector</b>, then:</p>
+      <table class="mcp-tools">
+        <tr><th>field</th><th>value</th></tr>
+        <tr><td><b>Name</b></td><td><code>Pandabytes</code></td></tr>
+        <tr><td><b>Remote MCP server URL</b></td><td><code>https://pandabytes.restful.zone/mcp?k=&lt;your-token&gt;</code></td></tr>
+        <tr><td><b>OAuth Client ID</b></td><td><em>leave blank</em></td></tr>
+        <tr><td><b>OAuth Client Secret</b></td><td><em>leave blank</em></td></tr>
+      </table>
+      <p>Replace <code>&lt;your-token&gt;</code> with the token the operator gives you (the full URL,
+        token included, is the one thing you paste). The connector is <b>read-only</b> — no raw SQL,
+        no writes; every call just reads the already-built catalog. Once added, ask Claude things like
+        <em>"which pandabytes sources are stale?"</em> or <em>"top BoredPanda authors by pageviews this
+        month"</em> and it will call these tools directly.</p>
+
+      <h2 id="install">Claude Code / Desktop (local)</h2>
+      <p>For Claude Code or Claude Desktop, run the same server <b>locally</b> over stdio with
+        <code>uvx</code> and point it at your key:</p>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>uvx mcp-pandabytes</code></pre>
       <p>Configure it in your MCP client (e.g. Claude Desktop / Claude Code <code>mcp.json</code>):</p>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>{
