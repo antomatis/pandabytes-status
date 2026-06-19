@@ -121,6 +121,23 @@ PB.fmtDayLong = (iso) => {
   const dow = isNaN(d) ? '' : PB._DOW[d.getUTCDay()] + ', ';
   return dow + PB._MON[(+m[2]) - 1] + ' ' + (+m[3]) + ' ' + m[1];
 };
+// ---- MONTHLY-series label helpers ----
+// A monthly coverage series ships one point per month (date = the 1st, e.g. 2026-05-01).
+// Per-bar tick: "May" (drop the year except on January, where the year disambiguates).
+PB.fmtMonthShort = (iso) => {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})/);
+  if (!m) return String(iso).slice(0, 7);
+  const mon = PB._MON[(+m[2]) - 1] || '';
+  return (+m[2]) === 1 ? mon + " '" + m[1].slice(2) : mon;   // Jan -> "Jan '26", else "May"
+};
+// Long month for the tooltip: "May 2026".
+PB.fmtMonthLong = (iso) => {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})/);
+  if (!m) return String(iso).slice(0, 7);
+  return (PB._MON[(+m[2]) - 1] || '') + ' ' + m[1];
+};
 
 // Full column chart with a title, y-axis scale, dated x-axis + rich JS hover, for
 // the expanded panel. `metricName` names WHAT is plotted (e.g. "pageviews");
@@ -140,9 +157,16 @@ PB.fmtDayLong = (iso) => {
 // just began (the whole window sits on/after the live boundary). It re-labels the live
 // legend/tooltip from the Posts-firehose "recovering" copy to "tracking started …",
 // which is the accurate framing for a brand-new series (e.g. reddit Comments).
-PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) => {
+// `granularity` (optional, 'monthly'): when 'monthly' the series is one point PER MONTH
+// (date = the 1st). The x-axis ticks, tooltip date and chart title switch from per-day
+// ("6/16" / "metric / day") to per-month ("May" / "metric / month"). Default = daily.
+PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom, granularity) => {
   if (!cov || !cov.length) return '<div class="chart-note">No coverage data for this source.</div>';
   const n = cov.length;
+  const monthly = granularity === 'monthly';
+  const perUnit = monthly ? 'month' : 'day';                 // chart title "<metric> / <perUnit>"
+  const tickFmt = monthly ? PB.fmtMonthShort : PB.fmtDayShort;   // x-axis tick text
+  const longFmt = monthly ? PB.fmtMonthLong : PB.fmtDayLong;     // tooltip date text
   const isLive = (d) => liveFrom && d && String(d) >= String(liveFrom);  // ISO dates compare lexically
   // viewBox uses a 1:1 user-unit space; CSS sizes it responsively (no distortion).
   // Each bar keeps a FIXED comfortable pitch (~30u) for the rotated value/date labels,
@@ -183,9 +207,11 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) =>
   // per-chart copy for the live tooltip line: accurate for a brand-new series vs the
   // established firehose era. Carried on each live bar as data-livetext so the shared
   // tooltip renderer needs no global state.
-  const liveTipText = newSeriesFrom
-    ? `live · daily tracking started ${PB.fmtDayLong(newSeriesFrom)}`
-    : 'live · firehose now NSFW-complete, volume recovering';
+  const liveTipText = monthly
+    ? 'current month — partial (live daily so far)'
+    : newSeriesFrom
+      ? `live · daily tracking started ${PB.fmtDayLong(newSeriesFrom)}`
+      : 'live · firehose now NSFW-complete, volume recovering';
 
   let anyLive = false;
   for (let i = 0; i < n; i++) {
@@ -196,7 +222,7 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) =>
     const live = isLive(date);                         // live-firehose era bar?
     if (live) anyLive = true;
     // data-* drive the JS tooltip (no native <title> — too slow/unstyled)
-    const data = `data-d="${PB.esc(PB.fmtDayLong(date))}" data-v="${missing ? '' : PB.esc(PB.fmtFull(v))}"`
+    const data = `data-d="${PB.esc(longFmt(date))}" data-v="${missing ? '' : PB.esc(PB.fmtFull(v))}"`
       + ` data-vu="${PB.esc(unit)}" data-r="${rc == null ? '' : PB.esc(PB.fmtFull(rc))}" data-gap="${(missing || v === 0) ? '1' : '0'}"`
       + (live ? ` data-live="1" data-livetext="${PB.esc(liveTipText)}"` : '');
     // value-on-top: rotated -90° (reads bottom→top), anchored just above the bar top.
@@ -221,12 +247,12 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) =>
     }
     // date-under-every-bar: rotated -60°, end-anchored so it hangs below-left of cx.
     const dy = baseY + 12;
-    xlab += `<text x="${cx.toFixed(1)}" y="${dy.toFixed(1)}" class="cc-xt" text-anchor="end" transform="rotate(-60 ${cx.toFixed(1)} ${dy.toFixed(1)})">${PB.esc(PB.fmtDayShort(date))}</text>`;
+    xlab += `<text x="${cx.toFixed(1)}" y="${dy.toFixed(1)}" class="cc-xt" text-anchor="end" transform="rotate(-60 ${cx.toFixed(1)} ${dy.toFixed(1)})">${PB.esc(tickFmt(date))}</text>`;
   }
 
   // chart title (WHAT is plotted) + sample-size note
-  const days = `${present.length}/${n} days`;
-  const title = `<text x="${padL}" y="18" class="cc-title">${PB.esc(metric)} / day</text>`
+  const days = `${present.length}/${n} ${monthly ? 'months' : 'days'}`;
+  const title = `<text x="${padL}" y="18" class="cc-title">${PB.esc(metric)} / ${perUnit}</text>`
     + `<text x="${(W-padR).toFixed(1)}" y="18" class="cc-sub" text-anchor="end">peak ${PB.esc(PB.fmtInt(max))} ${PB.esc(unit)} · ${days}</text>`;
 
   // legend for the live-era hatch (only when some bars are flagged live). A small
@@ -240,9 +266,11 @@ PB.columnChart = (cov, color, metricName, unitLabel, liveFrom, newSeriesFrom) =>
     const ly = 34, rx0 = W - padR;
     // brand-new series → "tracking started <date>"; established live era → the
     // firehose "NSFW-complete, recovering" copy. (newSeriesFrom is set by the caller.)
-    const legText = newSeriesFrom
-      ? `live · tracking started ${PB.fmtDay(newSeriesFrom)}`
-      : 'live · NSFW-complete, recovering';
+    const legText = monthly
+      ? 'current month (partial)'
+      : newSeriesFrom
+        ? `live · tracking started ${PB.fmtDay(newSeriesFrom)}`
+        : 'live · NSFW-complete, recovering';
     legend = `<text x="${rx0.toFixed(1)}" y="${ly}" class="cc-legend" text-anchor="end">${legText}</text>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="${color}" fill-opacity="0.28"/>`
       + `<rect x="${(rx0 - legText.length*4.6 - 15).toFixed(1)}" y="${ly-7.5}" width="11" height="9" rx="1.5" fill="url(#ccHatch)"/>`;

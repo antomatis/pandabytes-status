@@ -182,16 +182,25 @@ function facetRow(s) {
     const metricName = s.key_metric_name || 'rows';
     // when the series just began, tell columnChart so it labels the live bars
     // "tracking started …" instead of the (Posts-only) "recovering" firehose copy.
-    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s), s.live_from, fresh ? fresh.started : null)}</div></div>`;
+    // s.granularity ('monthly') switches the chart to per-month labels/title.
+    const chart = `<div class="bigchart-holder"><div class="bigchart-scroll">${PB.columnChart(s.coverage_30d, color, metricName, unitLabel(s), s.live_from, fresh ? fresh.started : null, s.granularity)}</div></div>`;
     // Source-provided explanation (e.g. reddit archive→firehose boundary), surfaced
     // right under the chart title so a known step-down doesn't read as broken.
     const noteHtml = s.note
       ? `<div class="chart-source-note">${PB.esc(s.note)}</div>` : '';
-    // footer caption: for a just-started series the generic "empty bars = gaps to
-    // investigate" line is wrong (the empty days predate tracking), so swap the copy.
-    const footerNote = fresh
-      ? `Daily ${PB.esc(metricName)} since tracking began ${PB.esc(fresh.started)}. Earlier days are blank because the series didn't exist yet — not a gap.`
-      : `30-day daily ${PB.esc(metricName)}. Empty bars = days with no data (gaps to investigate).`;
+    // footer caption priority:
+    //  1) source-provided coverage_footer (explains its own gaps — e.g. reddit_comments
+    //     monthly: the short June bar is the known Jun 1-17 gap, NOT a problem),
+    //  2) a just-started daily series (empty earlier bars predate tracking),
+    //  3) the generic daily "empty bars = gaps to investigate" copy.
+    const monthly = s.granularity === 'monthly';
+    const footerNote = s.coverage_footer
+      ? PB.esc(s.coverage_footer)
+      : fresh
+        ? `Daily ${PB.esc(metricName)} since tracking began ${PB.esc(fresh.started)}. Earlier days are blank because the series didn't exist yet — not a gap.`
+        : monthly
+          ? `Monthly ${PB.esc(metricName)}, one bar per month.`
+          : `30-day daily ${PB.esc(metricName)}. Empty bars = days with no data (gaps to investigate).`;
     html += `<div class="detail" data-detail="${PB.esc(s.id)}">
       <div class="chart-wrap">
         <div class="chart-meta">
