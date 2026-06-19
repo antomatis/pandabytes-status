@@ -51,6 +51,29 @@ function archiveVsLive(s, fresh, headline) {
   return { archiveBefore: fresh.started, liveFrom: s.live_from || fresh.started };
 }
 
+// A facet the catalog has deliberately declared PLANNED / nascent (an early-stage build
+// that is INTENTIONALLY tiny, not a real source that's broken or stuck). The hub already
+// encodes this in the source's own prose — the label carries "IN PROGRESS" and/or the
+// note/footer say the catalog status is PLANNED / NASCENT — so we read it from there
+// rather than hardcoding ids. We keep the underlying status (e.g. FRESH) untouched so the
+// freshness policy + green board are unchanged; this is only a SECONDARY honest affordance
+// (like "tracking just started") so a 0.14%-built source reads as intentional, not alarming.
+// Also lifts the source's own "~X% of <target>" phrasing, when present, so the small
+// headline is contextualised inline. Returns { progress: '~0.14% of 12.4M' } | {} | null.
+function plannedInfo(s) {
+  const hay = [s.label, s.note, s.coverage_footer].map(t => String(t || '')).join('  ');
+  const H = hay.toLowerCase();
+  const declared = /\bin progress\b/.test(H)
+    || /status\s*(?:is|=)\s*planned/.test(H)
+    || /\bnascent\b/.test(H)
+    || /\bplanned\b/.test(H);
+  if (!declared) return null;
+  // honest progress phrasing the source already states, e.g. "~0.14% of the 12.4M-image target".
+  const m = hay.match(/~?\s*([0-9.]+\s*%)\s+of\s+(?:the\s+)?([0-9.]+\s*[KMB]?)\b/i);
+  const progress = m ? `~${m[1].replace(/\s+/g, '')} of ${m[2].replace(/\s+/g, '')}` : null;
+  return { progress };
+}
+
 /* ---- per-facet row ---- */
 function facetRow(s) {
   const st = PB.normStatus(s.status);
@@ -67,6 +90,9 @@ function facetRow(s) {
   // when the big headline is a historical archive and the chart is a brand-new live
   // feed, caption both so the 23B-total + near-empty-chart pair never looks contradictory.
   const split = archiveVsLive(s, fresh, headline);
+  // catalog-declared PLANNED/nascent source: its small headline is intentional (an
+  // early-stage build), not a stalled/broken source — flag it as such, honestly.
+  const planned = plannedInfo(s);
 
   let sparkCell;
   if (covErr) {
@@ -88,19 +114,34 @@ function facetRow(s) {
     ? `<span class="badge b-new" title="daily tracking began ${PB.esc(fresh.started)} — the short series is expected, not a gap">tracking just started</span>`
     : '';
 
+  // "planned" pill beside the status badge: a calm, intentional marker for a catalog-
+  // declared nascent build, so its small headline reads as early-stage-by-design rather
+  // than broken. Lives in the always-visible badge column (so it survives the mobile
+  // label truncation that hides the "IN PROGRESS" prose). Status badge itself is unchanged.
+  const plannedPill = planned
+    ? `<span class="badge b-planned" title="catalog status: PLANNED — this build is deliberately ramping${planned.progress ? ` (${PB.esc(planned.progress)} so far)` : ''}; the small count is expected, not a stall">planned</span>`
+    : '';
+
   // metric sub-label: normally just the metric name. When the headline is an archive
   // total (split), prefix it "archive ·" and add a quiet caption noting the cutoff —
   // so the big number is unmistakably the historical archive, not the live chart total.
+  // quiet progress caption for a PLANNED source — the source's own "~0.14% of 12.4M"
+  // phrasing under the small headline, so the tiny number is read as "early build", not
+  // "stuck". Reuses the .arch-cap quiet-caption style; suppressed when split already owns
+  // the caption slot (archive sources are never planned, so they can't collide in practice).
+  const plannedCap = (planned && planned.progress && !split)
+    ? `<span class="arch-cap" title="catalog status: PLANNED — deliberately ramping">${PB.esc(planned.progress)} built so far</span>`
+    : '';
   const metricLbl = split
     ? `<span class="mlbl"><span class="arch">archive</span> · ${PB.esc(s.key_metric_name || '')}</span>`
       + `<span class="arch-cap" title="historical archive total — the chart below is the separate live daily feed">total through pre-live archive</span>`
-    : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>`;
+    : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>${plannedCap}`;
 
   let html = `<div class="facet${clickable ? ' clickable' : ''}${isOpen ? ' open' : ''}"`
     + ` data-id="${PB.esc(s.id)}"${clickable ? ' role="button" tabindex="0"' : ''}>
     <div class="f-name">${PB.esc(s.facet || s.id)}<small>${PB.esc(s.label || '')}</small></div>
     <div class="f-metric"><b>${PB.fmtInt(headline)}</b>${metricLbl}</div>
-    <div class="f-badge">${facetBadge(s.status)}${newPill}</div>
+    <div class="f-badge">${facetBadge(s.status)}${newPill}${plannedPill}</div>
     <div class="f-spark">${sparkCell}${sparkCap}<div class="synced">${PB.esc(sync.txt)}</div></div>
   </div>`;
 

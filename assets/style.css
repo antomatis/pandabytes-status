@@ -207,6 +207,12 @@ button:disabled { opacity: .5; cursor: default; }
    chart is expected, not a gap. Teal (matches the derived/Chartbeat accent), sits next
    to the status badge; wraps under it on narrow facet rows. */
 .b-new { background: rgba(26,166,160,.14); color: #0f7d78; margin-top: 4px; }
+/* "planned" pill — a catalog-declared nascent build whose small headline is intentional,
+   not a stall. Calm slate tone (the FROZEN/blue-gray family) so it reads as a deliberate
+   "not fully live yet" state, distinct from green FRESH and from amber issues. Sits beside
+   the status badge; wraps under it on narrow rows. */
+.b-planned { background: rgba(91,119,149,.14); color: #455c73; margin-top: 4px;
+  text-transform: lowercase; letter-spacing: .02em; }
 .f-badge { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: flex-start; }
 .sw-FRESH { background: var(--fresh);} .sw-STALE{background:var(--stale);} .sw-STALLED{background:var(--stalled);}
 .sw-FROZEN{background:var(--frozen);} .sw-MISSING{background:var(--missing);} .sw-DEPRECATED{background:var(--deprecated);}
