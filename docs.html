@@ -198,6 +198,28 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
         "n_days": 742, "first_day": "2024-06-05", "last_day": "2026-06-17" } ] },
   "meta": { "generated_at": "2026-06-18T23:58:33+03:00" } }</code></pre>
 
+      <h3 id="get-articles-discover">Discover article paths — <code>GET /v1/articles?prefix=</code></h3>
+      <p>List/discovery mode: find article <code>page_path</code>s <em>without</em> first ranking via
+        <code>/v1/articles/top</code>. Pass <code>?prefix=</code> to match paths that start with a string
+        (anchored), or <code>?q=</code> to match paths that <em>contain</em> a substring. Returns a bounded
+        list (<code>page_path</code> + <code>title</code> + all-time <code>pageviews</code>), ordered by
+        pageviews desc, <code>?limit=</code> default&nbsp;50 / max&nbsp;50. Take a returned
+        <code>page_path</code> straight into <code>GET /v1/articles?path=</code> for the full profile.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/articles?prefix=/air-india&limit=3"</code></pre>
+      <pre><code>{ "ok": true, "data": [
+    { "page_path": "/air-india-pilots-frantic-mayday-call-seconds-before-crash-revealed/",
+      "title": "Final Words Of Air India Pilot To The Control Tower …", "pageviews": 342566 },
+    { "page_path": "/air-india-pilot-final-words-on-day-crash-personal-struggle-is-revealed/",
+      "title": "Air India Pilot's Final Words To Security Guard On Day Of Crash …", "pageviews": 55424 },
+    { "page_path": "/air-india-pilots-final-words-to-each-other-before-crash-may-hold-clue-to-accident-cause/",
+      "title": "Final Words Between Air India Pilots Shed Light On Cause Of Crash …", "pageviews": 48024 }
+  ],
+  "meta": { "mode": "prefix", "prefix": "/air-india", "limit": 3, "count": 3,
+            "ordered_by": "pageviews (all-time) desc",
+            "generated_at": "2026-06-19T12:59:22+03:00" } }</code></pre>
+      <p>Substring search uses the same shape — swap <code>?prefix=</code> for <code>?q=</code>:</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/articles?q=air-india&limit=5"</code></pre>
+
       <h3 id="get-perf-author">By author — <code>GET /v1/perf/author</code></h3>
       <p>Per-author rollup over the window: article count, total pageviews, average engagement time, and
         total time-spent. Params: <code>?days=</code>, <code>?limit=</code>. Sorted by pageviews desc.</p>
@@ -286,7 +308,10 @@ curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources/ga4/covera
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/stats"
 # 4) editorial reporting (top articles / authors / categories)
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles/top?metric=pageviews&days=30"
-curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/perf/author?days=30&limit=10"</code></pre>
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/perf/author?days=30&limit=10"
+# 5) discover an article path (prefix or substring), then drill in
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles?prefix=/air-india&limit=5"
+curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles?path=/air-india-pilots-frantic-mayday-call-seconds-before-crash-revealed/"</code></pre>
     </div>
   </main>
 
