@@ -386,14 +386,15 @@ function renderUsage(snap) {
     { key: 'mcp_agentic', label: 'MCP agentic', tagClass: 'tag-mcp', tag: 'mcp' },
   ];
 
-  const chanHTML = channels.map(ch =>
-    '<div class="usage-channel">' +
+  const chanHTML = channels.map(ch => {
+    const v7 = c7[ch.key] || 0;
+    return '<div class="usage-channel">' +
       '<div class="usage-ch-label">' + PB.esc(ch.label) + '</div>' +
       '<div class="usage-ch-today">' + PB.fmtInt(ct[ch.key] || 0) + '</div>' +
-      '<div class="usage-ch-7d">7d: ' + PB.fmtInt(c7[ch.key] || 0) + ' requests</div>' +
+      '<div class="usage-ch-7d">7d: ' + PB.fmtInt(v7) + ' request' + (v7 === 1 ? '' : 's') + '</div>' +
       '<span class="usage-ch-tag ' + PB.esc(ch.tagClass) + '">' + PB.esc(ch.tag) + '</span>' +
-    '</div>'
-  ).join('');
+    '</div>';
+  }).join('');
 
   // Daily-volume sparkline (total per day, last 30d)
   let sparkHTML = '';
