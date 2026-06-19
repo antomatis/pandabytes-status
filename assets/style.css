@@ -197,9 +197,17 @@ button:disabled { opacity: .5; cursor: default; }
 .f-metric { font-variant-numeric: tabular-nums; text-align: right; }
 .f-metric b { font-size: 18px; font-weight: 800; color: var(--fg-strong); letter-spacing: -.02em; }
 .f-metric .mlbl { display: block; font-size: 11px; color: var(--fg-faint); font-weight: 500; }
+/* archive/live split: the headline is a historical archive total, captioned so it
+   never reads as contradictory next to the brand-new (near-empty) live daily chart. */
+.f-metric .mlbl .arch { color: #0f7d78; font-weight: 700; }
+.f-metric .arch-cap { display: block; font-size: 10px; line-height: 1.25; color: var(--fg-quiet);
+  font-weight: 500; margin-top: 1px; }
 .f-badge { text-align: left; }
-.f-spark { height: 32px; }
+.f-spark { min-height: 32px; }
 .f-spark .synced { font-size: 12px; color: var(--fg-faint); text-align: right; margin-top: 2px; }
+/* counterpart caption on the sparkline: marks the short chart as the LIVE daily feed. */
+.f-spark .spark-cap { font-size: 10px; line-height: 1.25; color: #0f7d78; font-weight: 600;
+  text-align: right; margin-top: 2px; }
 .no-series { font-size: 11px; color: var(--fg-quiet); font-style: italic; }
 
 /* status pill (Slack-style) */
@@ -442,6 +450,7 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .f-metric b { font-size: 20px; }
   .f-spark { grid-area: spark; }
   .f-spark .synced { text-align: left; }
+  .f-spark .spark-cap { text-align: left; }
   .g-rollup { margin-left: 0; width: 100%; }
   .g-head { flex-wrap: wrap; }
   nav.top { width: 100%; margin-left: 0; }

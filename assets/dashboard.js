@@ -43,6 +43,21 @@ function newSeriesInfo(s) {
   return allOnOrAfter ? { started: cov[0].date } : null;
 }
 
+// Split a facet whose headline is a big *historical archive* from its brand-new *live
+// daily* series. True only when the daily series just began (fresh) AND the headline
+// dwarfs everything the live series has logged so far — i.e. the big number is the
+// pre-live backfill/archive, not the live total (e.g. reddit Comments: 23B archive vs
+// a 2-day live chart). Generic, data-driven (no hardcoded ids/dates): when so we caption
+// the headline as "archive" and the chart as "live daily" so the two never read as
+// contradictory. Returns { archiveBefore: 'yyyy-mm-dd', liveFrom: 'yyyy-mm-dd' } or null.
+function archiveVsLive(s, fresh, headline) {
+  if (!fresh || headline == null) return null;
+  const liveSum = (s.coverage_30d || []).reduce((a, p) => a + (Number(p.key_metric) || 0), 0);
+  // headline must be >=100x the whole live window for it to be "mostly archive".
+  if (!(headline >= liveSum * 100)) return null;
+  return { archiveBefore: fresh.started, liveFrom: s.live_from || fresh.started };
+}
+
 /* ---- per-facet row ---- */
 function facetRow(s) {
   const st = PB.normStatus(s.status);
@@ -56,6 +71,9 @@ function facetRow(s) {
   const cov = hasCoverage(s);
   const clickable = cov && !covErr;
   const fresh = newSeriesInfo(s);   // daily series just began? (not a gap)
+  // when the big headline is a historical archive and the chart is a brand-new live
+  // feed, caption both so the 23B-total + near-empty-chart pair never looks contradictory.
+  const split = archiveVsLive(s, fresh, headline);
 
   let sparkCell;
   if (covErr) {
@@ -65,6 +83,11 @@ function facetRow(s) {
   } else {
     sparkCell = '<span class="no-series">no daily series</span>';
   }
+  // sub-caption under the sparkline: tells the viewer the (short) chart is the LIVE
+  // daily feed — paired with the "archive" headline caption it splits the two cleanly.
+  const sparkCap = split
+    ? `<div class="spark-cap">live daily · from ${PB.esc(PB.fmtDay(split.liveFrom))}</div>`
+    : '';
 
   // "new" pill next to the status badge when daily tracking just started — so the
   // short/empty-looking sparkline reads as "just began", not broken/stalled.
@@ -72,12 +95,20 @@ function facetRow(s) {
     ? `<span class="badge b-new" title="daily tracking began ${PB.esc(fresh.started)} — the short series is expected, not a gap">tracking just started</span>`
     : '';
 
+  // metric sub-label: normally just the metric name. When the headline is an archive
+  // total (split), prefix it "archive ·" and add a quiet caption noting the cutoff —
+  // so the big number is unmistakably the historical archive, not the live chart total.
+  const metricLbl = split
+    ? `<span class="mlbl"><span class="arch">archive</span> · ${PB.esc(s.key_metric_name || '')}</span>`
+      + `<span class="arch-cap" title="historical archive total — the chart below is the separate live daily feed">total through pre-live archive</span>`
+    : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>`;
+
   let html = `<div class="facet${clickable ? ' clickable' : ''}${isOpen ? ' open' : ''}"`
     + ` data-id="${PB.esc(s.id)}"${clickable ? ' role="button" tabindex="0"' : ''}>
     <div class="f-name">${PB.esc(s.facet || s.id)}<small>${PB.esc(s.label || '')}</small></div>
-    <div class="f-metric"><b>${PB.fmtInt(headline)}</b><span class="mlbl">${PB.esc(s.key_metric_name || '')}</span></div>
+    <div class="f-metric"><b>${PB.fmtInt(headline)}</b>${metricLbl}</div>
     <div class="f-badge">${facetBadge(s.status)}${newPill}</div>
-    <div class="f-spark">${sparkCell}<div class="synced">${PB.esc(sync.txt)}</div></div>
+    <div class="f-spark">${sparkCell}${sparkCap}<div class="synced">${PB.esc(sync.txt)}</div></div>
   </div>`;
 
   if (clickable && isOpen) {
