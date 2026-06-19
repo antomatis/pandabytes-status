@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pandabytes — MCP server</title>
-  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: one remote URL works in every client — claude.ai, Claude Code, Claude Desktop, Cursor — over Streamable HTTP. 10 read-only tools (5 freshness/catalog + 5 editorial KPI).">
+  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: one remote URL works in every client — claude.ai, Claude Code, Claude Desktop, Cursor — over Streamable HTTP. 3 read-only tools: describe_schema, query (sandboxed SELECT), agentic_query.">
   <link rel="icon" href="/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/pb_logo_32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/pb_logo_16.png">
@@ -51,10 +51,12 @@
       <nav class="doc-toc-nav">
         <a href="#mcp">MCP server</a>
         <a href="#connect">Connect (works everywhere)</a>
+        <a href="#first-calls">First calls (quickstart)</a>
         <a href="#clients">Per-client setup</a>
-        <a href="#tools">The 10 tools</a>
-        <a href="#freshness-tools">Freshness &amp; catalog</a>
-        <a href="#editorial-tools">Editorial KPIs</a>
+        <a href="#tools">The 3 tools</a>
+        <a href="#tool-describe-schema">describe_schema</a>
+        <a href="#tool-query">query</a>
+        <a href="#tool-agentic-query">agentic_query</a>
       </nav>
     </aside>
     <div class="doc">
@@ -62,20 +64,23 @@
       <p>The hub ships an <b>MCP</b> (Model Context Protocol) server so AI agents can query the catalog
         natively — no HTTP plumbing. It wraps the same <b>read-only</b> surface as the
         <a href="docs.html#rest">REST API</a>: an MCP call never triggers an upstream fetch, it only
-        reads the already-built catalog, so any query volume is safe and quota-free. The tools mirror
-        the REST field names verbatim, and errors surface as the REST error envelope
-        (<code>{ ok:false, error, code, hint }</code>) so an agent can self-correct on <code>hint</code>.</p>
-      <p>The MCP exposes both the freshness tools (source board, source detail, 30-day coverage, hub
-        stats, gap finder) and the editorial KPI tools (top articles, per-article performance, top
-        authors / categories / teams) — so an agent can ask "which pandabytes sources are stale?",
-        "chart GA4 pageviews for the last 30 days", or "who were our top authors by pageviews this
-        month?" without writing any HTTP code.</p>
+        reads the already-built catalog, so any query volume is safe and quota-free. Errors surface as
+        the REST error envelope (<code>{ ok:false, error, code, hint }</code>) so an agent can
+        self-correct on <code>hint</code>.</p>
+      <p>The surface is deliberately <b>minimal and universal — exactly three tools</b>:
+        <code>describe_schema()</code> returns the data map (every queryable relation + columns + join
+        recipes + worked examples), <code>query(sql)</code> runs one sandboxed read-only SELECT over
+        the whole catalog, and <code>agentic_query(question)</code> is an escape hatch that lets an
+        inner agent explore over several rounds. Together <code>query</code> + the schema doc subsume
+        every narrow per-topic tool — an agent can ask "which pandabytes sources are stale?", "chart
+        GA4 pageviews for the last 30 days", or "who were our top authors by pageviews this month?" by
+        composing its own SELECT, no HTTP code and no permission-prompt sprawl.</p>
       <p>There is <b>one canonical route for every client</b>: the
         <a href="#connect">remote URL</a> below. Streamable HTTP, nothing to install — the same single
         URL works in claude.ai, Claude Code, Claude Desktop, Cursor, and any other MCP client.</p>
 
       <h2 id="connect">Connect (works everywhere)</h2>
-      <p>One remote MCP server, <b>one URL</b>, the <b>same 10 read-only tools</b> in every client. The
+      <p>One remote MCP server, <b>one URL</b>, the <b>same 3 read-only tools</b> in every client. The
         access token rides in the URL query string (<code>?k=</code>) and is checked at the edge; the
         hub's own data key stays server-side, so the connector never sees it. Paste this single URL —
         nothing to install, no <code>uvx</code>:</p>
@@ -84,6 +89,28 @@
         token included, is the one thing you paste. The connector is <b>read-only</b>: no raw SQL, no
         writes; every call just reads the already-built catalog, so any query volume is safe and
         quota-free. Need a token? Request one on the <a href="request.html">Get a key</a> page.</p>
+
+      <h3 id="first-calls" style="margin-top:22px">First calls (quickstart)</h3>
+      <p>Once connected, the fastest path is two tools. Call <code>describe_schema()</code>
+        <b>first</b> &mdash; it returns the queryable relations + their real column names and
+        worked examples &mdash; then compose a read-only SELECT and run it with
+        <code>query(sql)</code> (SELECT-only, capped at 1000 rows). Example:</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>describe_schema()
+query("SELECT page_path, title, bp_views FROM v_articles ORDER BY bp_views DESC LIMIT 5")</code></pre>
+      <p class="note" style="font-size:.9em;opacity:.9;border-left:3px solid #c9a227;padding:.5em .8em;background:rgba(201,162,39,.06)"><b>Column-name gotcha.</b>
+        In SQL the article metrics are <code>bp_views</code>, <code>bp_upvotes</code>, and
+        <code>categories</code> (an array) &mdash; <b>not</b> the friendlier <code>pageviews</code> /
+        <code>category</code> you may see in the canned endpoints. Always run
+        <code>describe_schema()</code> first to get the exact column names rather than guessing;
+        a wrong name comes back as an error with a <code>hint</code> you can self-correct on.</p>
+
+      <p class="note" style="font-size:.9em;opacity:.85;border-left:3px solid #c9a227;padding:.5em .8em;background:rgba(201,162,39,.06)"><b>Testing the endpoint?</b>
+        This is a <b>Streamable-HTTP</b> MCP server, not a plain JSON-RPC endpoint. A bare
+        <code>POST /mcp?k=&lt;token&gt;</code> with a hand-rolled JSON-RPC body returns <code>[]</code> (empty) —
+        that is expected, not a failure. A real client must do the Streamable-HTTP / SSE session
+        handshake (<code>initialize</code> → session id → tool calls). Use a proper MCP client to connect:
+        Claude Code <code>claude mcp add --transport http</code> (below) or the claude.ai / Claude Desktop
+        <em>Add custom connector</em> dialog — don't <code>curl</code> a raw JSON-RPC POST and conclude it's down.</p>
 
       <h2 id="clients">Per-client setup</h2>
       <p>Same URL, four ways to add it. Once added, ask Claude things like
@@ -143,79 +170,71 @@
         <p>Need a key? Request one on the <a href="request.html">Get a key</a> page.</p>
       </details>
 
-      <h2 id="tools">The 10 tools</h2>
-      <p>Ten tools in two families — <b>5 freshness/catalog</b> + <b>5 editorial KPI</b> — each a thin
-        read-only call to the REST API. Field names mirror the
-        <a href="docs.html#rest">REST contract</a> verbatim. Status enum:
-        <code>FRESH · STALE · STALLED · MISSING · FROZEN · DEPRECATED</code>; kind enum:
-        <code>spine · metric · reference · vector · federated · derived</code>.</p>
-
-      <h3 id="freshness-tools">Freshness &amp; catalog</h3>
+      <h2 id="tools">The 3 tools</h2>
+      <p>The surface is <b>minimal and universal by design — exactly three tools</b> (collapsed from a
+        prior set of narrow per-topic tools): <code>query</code> + the schema doc subsume every custom
+        editorial / coverage question, and fewer tools means no permission-prompt sprawl. All three
+        are <b>read-only</b> and return a single JSON object; errors come back as the REST error
+        envelope (<code>{ ok:false, error, code, hint }</code>) so an agent can self-correct on
+        <code>hint</code>. The usual flow is two tools: <code>describe_schema()</code> once, then
+        <code>query(sql)</code> as many times as you like — reach for <code>agentic_query</code> only
+        for genuinely hard, multi-step questions.</p>
       <div class="doc-table-scroll">
       <table class="mcp-tools">
         <tr><th>tool</th><th>what it does</th><th>REST</th></tr>
         <tr>
-          <td><code>list_sources(kind?, status?)</code></td>
-          <td>The freshness board — every source + health at a glance; find STALE/MISSING/STALLED; pick an id. Optional <code>kind</code>/<code>status</code> filters.</td>
-          <td><code>GET /v1/sources</code></td>
+          <td><code>describe_schema()</code></td>
+          <td>The DATA MAP — call it FIRST. Returns the full schema doc for the SQL surface: every queryable relation (the curated spine + rollups <em>and</em> the parquet-backed sources — per-day GA4 / Chartbeat, the raw reddit corpus, the FB ad library) with its grain + key columns, the join recipes that bridge them, the safety/limit contract, and copy-pasteable worked SELECTs.</td>
+          <td><code>GET /v1/query/schema</code></td>
         </tr>
         <tr>
-          <td><code>get_source_status(id)</code></td>
-          <td>One source in depth: metrics, key, cadence (<code>load</code>), <code>days_behind</code>, earliest/latest date, notes.</td>
-          <td><code>GET /v1/sources/{id}</code></td>
+          <td><code>query(sql)</code></td>
+          <td>Run ONE sandboxed read-only SELECT over the whole catalog — the universal data path. Compose your own filters / joins / grouping / window. Result is capped at 1000 rows (<code>truncated:true</code> if more exist).</td>
+          <td><code>POST /v1/query</code></td>
         </tr>
         <tr>
-          <td><code>get_coverage(id, days=30)</code></td>
-          <td>Daily coverage timeseries (gap-free, every day present) — reason about dips/ramps/holes over time. <code>days</code> 1..365.</td>
-          <td><code>GET /v1/sources/{id}/coverage</code></td>
-        </tr>
-        <tr>
-          <td><code>get_stats()</code></td>
-          <td>Hub top-line counts — total fact rows, sources total, status tally, biggest tables. "How big is the hub?"</td>
-          <td><code>GET /v1/stats</code></td>
-        </tr>
-        <tr>
-          <td><code>find_gaps(id, days=30)</code></td>
-          <td>Only the HOLES — zero-row days <em>inside</em> a source's active range, not the full series.</td>
-          <td><code>GET /v1/sources/{id}/coverage</code></td>
+          <td><code>agentic_query(question)</code></td>
+          <td>Escape hatch for HARD / multi-step questions: an inner on-box agent EXPLORES the catalog over several rounds (run SQL → read rows → JOIN → refine) then synthesizes a grounded answer. Slower + costlier than <code>query</code> — prefer <code>query</code> + <code>describe_schema</code> for anything you can express directly.</td>
+          <td><em>none — orchestrates the two above</em></td>
         </tr>
       </table>
       </div>
 
-      <h3 id="editorial-tools">Editorial KPIs</h3>
-      <div class="doc-table-scroll">
-      <table class="mcp-tools">
-        <tr><th>tool</th><th>what it does</th><th>REST</th></tr>
-        <tr>
-          <td><code>get_top_articles(metric="pageviews", days=30, limit=20)</code></td>
-          <td>Rank articles by a metric over a window. "Best-performing articles this month."</td>
-          <td><code>GET /v1/articles/top</code></td>
-        </tr>
-        <tr>
-          <td><code>get_article(page_path)</code></td>
-          <td>One article + cross-source metrics: metadata + all-time canonical KPIs + per-source breakdown.</td>
-          <td><code>GET /v1/articles?path=</code></td>
-        </tr>
-        <tr>
-          <td><code>get_author_performance(days=30, limit=50)</code></td>
-          <td>Author leaderboard — article count, pageviews, avg engagement time, time-spent. "Which authors drove the most traffic?"</td>
-          <td><code>GET /v1/perf/author</code></td>
-        </tr>
-        <tr>
-          <td><code>get_category_performance(days=30, limit=50)</code></td>
-          <td>Category leaderboard (primary category) — compare verticals: Relationships, Curiosities, Funny, …</td>
-          <td><code>GET /v1/perf/category</code></td>
-        </tr>
-        <tr>
-          <td><code>get_team_performance(days=30, limit=50)</code></td>
-          <td>Team leaderboard, grouped by editorial <code>team_id</code> (gateway category taxonomy). "How did each team perform?"</td>
-          <td><code>GET /v1/perf/team</code></td>
-        </tr>
-      </table>
-      </div>
-      <p class="tip">Every tool returns a single JSON object; full field-by-field shapes are in the
-        <a href="docs.html#rest">REST API usage</a> and <a href="docs.html#editorial">Editorial
-        performance</a> sections of the docs (the MCP tools return the same payloads).</p>
+      <h3 id="tool-describe-schema" style="margin-top:26px"><code>describe_schema()</code></h3>
+      <p>Read this <b>first</b>, and again any time you are unsure which relations or columns exist.
+        It returns <code>{ markdown, limits }</code> — the full schema documentation plus the caps
+        enforced server-side (<code>max_rows</code> 1000, <code>timeout_sec</code> 300,
+        <code>memory</code> a soft limit that spills to NVMe, <code>max_concurrency</code>, and
+        <code>full_catalog: true</code> meaning the WHOLE catalog is queryable, no relation whitelist).</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>describe_schema()</code></pre>
+
+      <h3 id="tool-query" style="margin-top:26px"><code>query(sql)</code></h3>
+      <p>The universal data path: compose one read-only SELECT and run it. <b>The contract</b> (enforced
+        server-side; a violation returns <code>code:"rejected"</code>, never a crash): a single
+        <code>SELECT</code> or <code>WITH … SELECT</code> — no writes / DDL / DML, no
+        <code>SET</code>/<code>PRAGMA</code>/<code>ATTACH</code>/<code>COPY</code>/<code>CALL</code>, no
+        file functions (<code>read_csv</code>/<code>read_parquet</code>/<code>glob</code> — the
+        predefined views read their fixed parquet for you), no second statement. The whole catalog is
+        readable; output is wrapped in <code>LIMIT 1000</code> (<code>truncated:true</code> → aggregate
+        or add your own <code>ORDER BY … LIMIT</code>). 300s wall-clock budget, ~20-way concurrency
+        (a 21st gets <code>code:"busy"</code>). For speed, filter on the partition key <code>dt</code>
+        on the date-partitioned sources. Returns <code>{ columns, rows, row_count, truncated }</code>.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>query("SELECT page_path, title, bp_views FROM v_articles ORDER BY bp_views DESC LIMIT 5")</code></pre>
+
+      <h3 id="tool-agentic-query" style="margin-top:26px"><code>agentic_query(question)</code></h3>
+      <p>The escape hatch for questions that are awkward to write as a single SELECT (multi-step,
+        comparative, exploratory). An inner on-box <code>claude</code> (Haiku, from the subscription
+        pool — never the paid API) does NL → SQL → EXPLORE → synthesis over up to ~10 rounds, but runs
+        <b>tool-less</b>: it can only emit SQL text, which the server runs through the <em>same</em>
+        guarded <code>query</code> path — so it can never bypass the safety harness or escape the box.
+        It early-exits as soon as the rows suffice, has a hard ~300s budget, and returns
+        <code>{ answer, queries, rounds, elapsed_s, partial, note }</code>. Costs pool tokens per call.</p>
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>agentic_query("Which feeder subreddits had the worst coverage drop over the last 30 days, and what changed?")</code></pre>
+
+      <p class="tip">Full field-by-field shapes — including the queryable relations, columns, and join
+        recipes that <code>describe_schema()</code> returns — are in the
+        <a href="docs.html#rest">REST API usage</a> section of the docs (the MCP tools return the same
+        payloads as the REST endpoints listed above).</p>
     </div>
   </main>
 

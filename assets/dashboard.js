@@ -449,6 +449,68 @@ function renderUsage(snap) {
     '</div>';
 }
 
+/* ---- editorial leaders: top authors + categories ----
+   Renders snapshot.editorial_leaders, which pb_snapshot.py already computes from the
+   GA4/article catalog (top N authors & categories over a rolling window, with articles
+   / pageviews / avg engagement-time / total timespent). The status board above tells you
+   the *plumbing* is healthy; this is the one panel that tells an editor what's actually
+   WORKING — the Chartbeat-style "who/what is winning" read, served from the SAME snapshot
+   the page already fetched (no key, no extra request, no /v1 call). Purely additive and
+   self-hiding: if the block is absent/empty (older snapshot), the section stays hidden. */
+function leaderTable(rows, nameKey, nameLabel) {
+  if (!rows || !rows.length) return '';
+  // Rank by pageviews (the headline editorial metric); bar-meter is relative to the
+  // top row so the column reads as a Chartbeat-style horizontal ranking at a glance.
+  const sorted = rows.slice().sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0));
+  const max = Math.max(1, sorted[0].pageviews || 0);
+  const body = sorted.map((r, i) => {
+    const pv  = r.pageviews || 0;
+    const pct = Math.max(2, (pv / max) * 100);
+    const eng = r.avg_engagement_time;
+    const engTxt = (eng == null || isNaN(eng)) ? '—' : Math.round(eng) + 's';
+    return '<tr>' +
+      '<td class="lead-rank">' + (i + 1) + '</td>' +
+      '<td class="lead-name" title="' + PB.esc(r[nameKey]) + '">' + PB.esc(r[nameKey]) + '</td>' +
+      '<td class="lead-arts">' + PB.fmtInt(r.articles) + '</td>' +
+      '<td class="lead-pv">' +
+        '<span class="lead-bar" style="width:' + pct.toFixed(1) + '%" aria-hidden="true"></span>' +
+        '<span class="lead-pv-n">' + PB.fmtInt(pv) + '</span>' +
+      '</td>' +
+      '<td class="lead-eng">' + engTxt + '</td>' +
+    '</tr>';
+  }).join('');
+  return '<div class="lead-card">' +
+    '<div class="lead-card-title">' + PB.esc(nameLabel) + '</div>' +
+    '<table class="lead-table"><thead><tr>' +
+      '<th class="lead-rank"></th>' +
+      '<th class="lead-name">' + PB.esc(nameLabel === 'Top authors' ? 'Author' : 'Category') + '</th>' +
+      '<th class="lead-arts">Articles</th>' +
+      '<th class="lead-pv">Pageviews</th>' +
+      '<th class="lead-eng" title="average engagement time per article">Avg&nbsp;eng.</th>' +
+    '</tr></thead><tbody>' + body + '</tbody></table>' +
+  '</div>';
+}
+
+function renderLeaders(snap) {
+  const sect = document.getElementById('leaders-section');
+  const panel = document.getElementById('leaders-panel');
+  if (!sect || !panel) return;
+  const el = snap.editorial_leaders;
+  const authors = (el && el.authors) || [];
+  const cats    = (el && el.categories) || [];
+  if (!authors.length && !cats.length) { sect.hidden = true; return; }  // self-hide
+
+  // window caption ("last 30 days") pulled straight from the snapshot — no invented label.
+  const days = el && el.days;
+  const cap = document.getElementById('leaders-window');
+  if (cap) cap.textContent = days ? ('— top authors & categories · last ' + days + ' days · by pageviews') : '';
+
+  panel.innerHTML =
+    leaderTable(authors, 'author', 'Top authors') +
+    leaderTable(cats, 'category', 'Top categories');
+  sect.hidden = false;
+}
+
 /* ---- hub "pulse": at-a-glance health summary ----
    Derived from the SAME snapshot the board already loaded (no extra fetch). Buckets
    every source into one calm category, honoring flow-state so a deliberate pause/frozen
@@ -496,7 +558,7 @@ function renderPulse(snap) {
     + `<span class="pulse-n">${n}</span> ${PB.esc(label)}</span>`;
   const parts = [];
   if (p.fresh)   parts.push(seg('pd-fresh',   p.fresh,   'fresh',   `${p.fresh} source(s) up to date`));
-  if (p.issue)   parts.push(seg('pd-issue',   p.issue,   p.issue === 1 ? 'stale' : 'stale', `${p.issue} source(s) STALE/STALLED/MISSING — to investigate`));
+  if (p.issue)   parts.push(seg('pd-issue',   p.issue,   p.issue === 1 ? 'needs attention' : 'need attention', `${p.issue} source(s) STALE/STALLED/MISSING — to investigate`));
   if (p.paused)  parts.push(seg('pd-paused',  p.paused,  'paused',  `${p.paused} source(s) deliberately paused or frozen (intentional hold)`));
   if (p.derived) parts.push(seg('pd-derived', p.derived, 'derived', `${p.derived} derived/pending source(s) (no freshness status)`));
 
@@ -504,7 +566,45 @@ function renderPulse(snap) {
   el.removeAttribute('hidden');
   el.innerHTML = `<span class="pulse-verdict">${PB.esc(verdict)}</span>`
     + `<span class="pulse-sep" aria-hidden="true">·</span>`
-    + parts.join('<span class="pulse-sep" aria-hidden="true">·</span>');
+    + parts.join('<span class="pulse-sep" aria-hidden="true">·</span>')
+    // freshness "updated N ago" stamp: a quiet trailing segment carrying the snapshot's
+    // own age (it lives in the chip so the at-a-glance health read and the as-of time sit
+    // together). Filled + kept ticking by renderFreshness() below; placeholder until then.
+    + `<span class="pulse-sep pulse-sep-fresh" aria-hidden="true">·</span>`
+    + `<span class="pulse-fresh" id="pulse-fresh"></span>`;
+  renderFreshness(snap);
+}
+
+/* ---- snapshot freshness stamp ("updated N ago") ----
+   A small "as-of" indicator appended to the hub-pulse chip. It reads the SAME snapshot
+   the board already loaded (snap.generated_at) — no extra fetch. Crucially it keeps the
+   RELATIVE time current on its own 30s ticker between the page's ~5-min snapshot fetches,
+   so an editor always knows how old the data is, and a STALLED refresh (snapshot stops
+   regenerating) surfaces as the age creeping up + an amber tint — the core
+   Chartbeat-style observability read ("is this live, and how live?"). Self-hiding when
+   generated_at is absent (older snapshot shape). */
+let _freshGenAt = null;            // generated_at of the current snapshot
+function paintFreshness() {
+  const el = document.getElementById('pulse-fresh');
+  if (!el) return;
+  if (!_freshGenAt) { el.textContent = ''; el.hidden = true; return; }
+  const a = PB.snapshotAge(_freshGenAt);
+  if (a.minutes == null) { el.textContent = ''; el.hidden = true; return; }
+  el.hidden = false;
+  el.classList.toggle('is-stale', !!a.stale);
+  el.title = 'Snapshot generated ' + a.exact
+    + (a.stale ? ' — older than usual; the auto-refresh may be behind' : '')
+    + '. The page reloads it every few minutes; this time is live.';
+  el.innerHTML = '<span class="pf-dot" aria-hidden="true"></span>'
+    + '<span class="pf-lbl">updated</span> <span class="pf-ago">' + PB.esc(a.txt) + '</span>';
+}
+function renderFreshness(snap) {
+  _freshGenAt = (snap && snap.generated_at) || null;
+  paintFreshness();
+  if (!renderFreshness._tick) {
+    // keep the relative label honest between snapshot fetches (lightweight: text only).
+    renderFreshness._tick = setInterval(paintFreshness, 30 * 1000);
+  }
 }
 
 function renderAll(snap) {
@@ -514,6 +614,7 @@ function renderAll(snap) {
   applyDefaultCollapse(snap);
   renderPulse(snap);
   renderBoard(snap);
+  renderLeaders(snap);
   renderUsage(snap);
 }
 

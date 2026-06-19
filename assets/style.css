@@ -142,6 +142,35 @@ nav.top a.active { background: var(--accent-soft); color: var(--accent-deep); }
 .pd-paused  { background: var(--frozen); }                /* slate for deliberate pause/frozen */
 .pd-derived { background: var(--teal); }                  /* derived/pending sources */
 
+/* freshness "updated N ago" stamp — a quiet "as-of" segment trailing the health
+   counts. Teal pulsing dot = live snapshot; the relative time keeps ticking on a 30s
+   client interval so an editor sees how old the data is at a glance. Goes amber if the
+   snapshot falls behind its ~few-minute refresh cadence (a real staleness signal). */
+.hub-pulse .pulse-fresh { display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap; color: var(--fg-quiet); font-weight: 600; }
+.hub-pulse .pulse-fresh[hidden] { display: none; }
+.hub-pulse .pulse-fresh .pf-lbl { font-weight: 600; }
+.hub-pulse .pulse-fresh .pf-ago { font-weight: 800; color: var(--fg-dim);
+  font-variant-numeric: tabular-nums; }
+.hub-pulse .pulse-fresh .pf-dot { width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--teal); box-shadow: 0 0 0 0 rgba(26, 166, 160, .45);
+  animation: pf-pulse 2.6s ease-out infinite; }
+@keyframes pf-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(26, 166, 160, .45); }
+  70%  { box-shadow: 0 0 0 5px rgba(26, 166, 160, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(26, 166, 160, 0); }
+}
+/* snapshot older than usual → amber dot + amber time, and the "·" before it goes amber
+   too, so a behind-refresh state reads as a soft warning, not an alert. */
+.hub-pulse .pulse-fresh.is-stale .pf-dot { background: var(--stale); animation: none;
+  box-shadow: 0 0 0 2px rgba(236, 178, 46, .22); }
+.hub-pulse .pulse-fresh.is-stale .pf-ago { color: #a35d12; }
+.hub-pulse .pulse-fresh.is-stale .pf-lbl { color: #a35d12; }
+/* respect reduced-motion: hold the dot steady (no pulsing) for those who ask for it. */
+@media (prefers-reduced-motion: reduce) {
+  .hub-pulse .pulse-fresh .pf-dot { animation: none; }
+}
+
 /* ---- key bar ---- */
 .keybar {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -586,4 +615,65 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .usage-channel { border-right: none; border-bottom: 1px solid var(--border-soft); }
   .usage-channel:nth-child(odd) { border-right: 1px solid var(--border-soft); }
   .usage-channel:last-child { border-bottom: none; }
+}
+
+/* ---- editorial leaders (top authors + categories) ----
+   Additive panel below the source board: the one EDITORIAL read on an otherwise
+   infra-only status page. Two cards side by side (authors / categories), each a
+   compact Chartbeat-style ranking table with an inline teal pageviews bar-meter.
+   Renders from snapshot.editorial_leaders (no key, no extra fetch). */
+.leaders-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+}
+.lead-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+}
+.lead-card-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--fg-faint);
+  padding: 13px 18px 11px; border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-2);
+}
+.lead-table {
+  width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums;
+}
+.lead-table thead th {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  font-weight: 700; color: var(--fg-quiet); text-align: right;
+  padding: 9px 14px 7px; border-bottom: 1px solid var(--border-soft); white-space: nowrap;
+}
+.lead-table th.lead-name { text-align: left; }
+.lead-table tbody td {
+  padding: 8px 14px; font-size: 13px; color: var(--fg-dim);
+  border-bottom: 1px solid var(--border-soft); text-align: right; white-space: nowrap;
+}
+.lead-table tbody tr:last-child td { border-bottom: none; }
+.lead-table tbody tr:hover td { background: var(--surface-2); }
+.lead-rank {
+  width: 24px; text-align: right; color: var(--fg-quiet);
+  font-weight: 700; font-size: 12px;
+}
+.lead-name {
+  text-align: left !important; color: var(--fg-strong); font-weight: 600;
+  max-width: 0; width: 42%; overflow: hidden; text-overflow: ellipsis;
+}
+.lead-arts { color: var(--fg-faint); font-size: 12px; }
+/* pageviews cell: an inline horizontal bar-meter (teal, relative to the top row)
+   sitting BEHIND the right-aligned number — the at-a-glance ranking signal. */
+.lead-pv {
+  position: relative; min-width: 110px; color: var(--fg-strong); font-weight: 700;
+}
+.lead-bar {
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  height: 60%; background: var(--teal-soft); border-radius: var(--radius-sm);
+  z-index: 0; pointer-events: none;
+}
+.lead-pv-n { position: relative; z-index: 1; }
+.lead-eng { color: var(--fg-faint); font-size: 12px; min-width: 56px; }
+@media (max-width: 560px) {
+  .lead-table tbody td, .lead-table thead th { padding-left: 10px; padding-right: 10px; }
+  .lead-name { width: 38%; }
 }

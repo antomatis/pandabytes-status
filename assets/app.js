@@ -52,6 +52,37 @@ PB.syncedAgo = (latestDate, generatedAt) => {
   return { txt, hours: h };
 };
 
+// Snapshot age: how long ago the live snapshot was GENERATED, measured against the
+// viewer's wall clock (so the relative label keeps ticking between the page's ~5-min
+// fetches — an editor can see at a glance whether the data is seconds or many minutes
+// old, and whether the auto-refresh is actually flowing). Returns:
+//   { txt: 'just now' | 'Nm ago' | 'Nh ago' | 'Nd ago' | '—',
+//     minutes, exact, stale }
+// `exact` is the local-time string for the tooltip; `stale` is true when the snapshot
+// is OLDER than `staleMin` (default 15m) — the server regenerates it every few minutes,
+// so a much older one means the refresher fell behind (a real observability signal),
+// and the stamp tints amber.
+PB.snapshotAge = (generatedAt, staleMin) => {
+  staleMin = staleMin || 15;
+  const gen = PB.parseTs(generatedAt);
+  if (!gen) return { txt: '—', minutes: null, exact: '', stale: false };
+  const min = (Date.now() - gen.getTime()) / 60000;
+  let txt;
+  if (min < 1) txt = 'just now';
+  else if (min < 60) txt = Math.round(min) + 'm ago';
+  else if (min < 48 * 60) txt = Math.round(min / 60) + 'h ago';
+  else txt = Math.round(min / 1440) + 'd ago';
+  let exact;
+  try {
+    exact = gen.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+  } catch (e) { exact = String(generatedAt); }
+  // negative age (viewer clock behind the server) → treat as fresh, never "stale".
+  return { txt, minutes: min, exact, stale: min > staleMin };
+};
+
 PB.normStatus = (s) => (s && PB.STATUS_LIST.includes(s)) ? s : 'UNKNOWN';
 
 // Light-theme status palette (Slack tokens) — also drives sparkline/column-chart
