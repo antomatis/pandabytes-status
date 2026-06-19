@@ -25,6 +25,11 @@
   <main class="wrap">
     <div id="freshness" class="freshness"></div>
 
+    <!-- editorial leaderboard: Chartbeat-style top authors / categories (30d),
+         fed keylessly from snapshot.editorial_leaders. Rendered by dashboard.js;
+         hidden until populated (older snapshots have no editorial_leaders key). -->
+    <section id="editorial" class="editorial" aria-label="Editorial performance leaderboard" hidden></section>
+
     <div class="section-title">Sources
       <span class="muted">— grouped by source · click a group to collapse · click a facet for its 30-day coverage chart</span>
     </div>

@@ -433,6 +433,75 @@ code:not(pre code) { background: var(--surface-3); padding: 1px 6px; border-radi
   0%, 100% { box-shadow: 0 0 0 3px rgba(215,75,31,.18); }
   50%      { box-shadow: 0 0 0 5px rgba(215,75,31,.08); }
 }
+
+/* ---- editorial leaderboard (Chartbeat-style top authors / categories, 30d) ---- */
+.editorial { margin: 22px 0 8px; }
+.editorial[hidden] { display: none; }
+.ed-card { background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  /* a thin Chartbeat-teal top edge marks this as the editorial headline panel */
+  border-top: 3px solid var(--teal); }
+.ed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; padding: 16px 18px 12px; }
+.ed-kicker { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--teal); }
+.ed-title { margin: 2px 0 0; font-family: var(--serif); font-size: 20px; font-weight: 700;
+  color: var(--fg-strong); letter-spacing: -.01em; line-height: 1.2; }
+.ed-title span { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--fg-faint); }
+
+/* segmented Authors / Categories toggle (Slack-style pill group) */
+.ed-toggle { display: inline-flex; background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
+.ed-tab { background: transparent; color: var(--fg-dim); border: 0; border-radius: var(--radius-pill);
+  padding: 6px 14px; font-weight: 700; font-size: 12.5px; cursor: pointer; box-shadow: none;
+  transition: background .12s ease, color .12s ease; }
+.ed-tab:hover { color: var(--fg); filter: none; transform: none; }
+.ed-tab.active { background: var(--surface); color: var(--accent-deep); box-shadow: var(--shadow); }
+.ed-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* column header + rows share one 4-col grid so values line up like a leaderboard */
+.ed-cols, .ed-row { display: grid; grid-template-columns: 34px 1fr 120px 120px; gap: 12px;
+  align-items: center; }
+.ed-cols { padding: 6px 18px; border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft); background: var(--surface-2);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--fg-quiet); }
+.edc-pv, .edc-eng { text-align: right; }
+
+.ed-list { list-style: none; margin: 0; padding: 0; }
+.ed-row { padding: 11px 18px; border-top: 1px solid var(--border-soft); }
+.ed-row:first-child { border-top: 0; }
+.ed-row:hover { background: var(--surface-2); }
+.ed-rank { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px;
+  color: var(--fg-quiet); text-align: center; }
+.ed-row.ed-top .ed-rank { color: #fff; background: var(--teal); border-radius: 50%;
+  width: 24px; height: 24px; line-height: 24px; display: inline-block; justify-self: center;
+  box-shadow: 0 1px 4px rgba(26,166,160,.4); }
+.ed-name { min-width: 0; font-weight: 700; color: var(--fg-strong); font-size: 14.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-name small { display: block; font-weight: 500; font-size: 11px; color: var(--fg-faint);
+  text-transform: none; letter-spacing: 0; }
+.ed-pv, .ed-eng { text-align: right; font-variant-numeric: tabular-nums; min-width: 0; }
+.ed-pv b { display: block; font-size: 16px; font-weight: 800; color: var(--fg-strong);
+  letter-spacing: -.02em; }
+.ed-eng b { display: block; font-size: 14px; font-weight: 700; color: var(--teal); }
+.ed-pv small, .ed-eng small { display: block; font-size: 10px; color: var(--fg-quiet);
+  font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.ed-foot { padding: 11px 18px 14px; font-size: 11px; color: var(--fg-faint);
+  border-top: 1px solid var(--border-soft); }
+.ed-empty { padding: 28px 18px; text-align: center; color: var(--fg-faint); font-size: 13px; }
+
+@media (max-width: 560px) {
+  .ed-head { align-items: flex-start; }
+  .ed-toggle { width: 100%; }
+  .ed-tab { flex: 1; }
+  /* drop the avg-engagement column on the narrowest screens; keep rank/name/pageviews */
+  .ed-cols, .ed-row { grid-template-columns: 30px 1fr 86px; gap: 9px; padding-left: 14px; padding-right: 14px; }
+  .edc-eng, .ed-eng { display: none; }
+  .ed-name { font-size: 14px; }
+  .ed-pv b { font-size: 15px; }
+}
+
 footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-size: 12px;
   padding: 22px 0; margin-top: 44px; }
 .loading { color: var(--fg-faint); padding: 30px; text-align: center; }
