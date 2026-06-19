@@ -6,73 +6,6 @@
 let SNAP = null;             // current snapshot-shaped data being rendered
 const expandedFacets = new Set();   // facet ids whose 30-day column chart is open
 const collapsedGroups = new Set();  // group ids the user has collapsed
-let statusFilter = 'all';    // board status-filter chip: 'all' | 'attn' | 'FRESH' | 'FROZEN' | <STATUS>
-
-/* ---- board status filter ("what needs attention") ----
-   A small chip row above the source board that filters the visible sources by their
-   freshness status. Chips are built DYNAMICALLY from the statuses actually present in
-   the snapshot (with live counts) — no hardcoded source list:
-     · All            → every source (respects the user's collapse state)
-     · Needs attention → the union of PROBLEM statuses (STALE/STALLED/MISSING/DEPRECATED)
-     · Fresh / Frozen  → that single status
-   Pure front-end, reads s.status off the same snapshot the board already uses. */
-
-// does a source match the active filter chip? null status (derived) only shows under "all".
-function facetMatchesFilter(s) {
-  if (statusFilter === 'all') return true;
-  if (s.status == null) return false;
-  const st = PB.normStatus(s.status);
-  if (statusFilter === 'attn') return PB.PROBLEM.has(st);
-  return st === statusFilter;
-}
-
-// chips to show, in triage order, built from the statuses present (count > 0 only).
-// returns [{key, label, count, attn}] — 'all' always first.
-function buildFilterChips(byGroup) {
-  const counts = {};            // status -> n
-  let total = 0, attn = 0;
-  for (const facets of byGroup.values()) {
-    for (const s of facets) {
-      total++;
-      if (s.status == null) continue;
-      const st = PB.normStatus(s.status);
-      counts[st] = (counts[st] || 0) + 1;
-      if (PB.PROBLEM.has(st)) attn++;
-    }
-  }
-  const chips = [{ key: 'all', label: 'All', count: total, attn: false }];
-  if (attn > 0) chips.push({ key: 'attn', label: 'Needs attention', count: attn, attn: true });
-  // FRESH then FROZEN then any other concrete status present, each only if non-zero.
-  for (const st of ['FRESH', 'FROZEN']) {
-    if (counts[st]) chips.push({ key: st, label: st[0] + st.slice(1).toLowerCase(), count: counts[st], attn: false });
-  }
-  return chips;
-}
-
-function renderStatusFilter(byGroup) {
-  const host = document.getElementById('status-filter');
-  if (!host) return;
-  const chips = buildFilterChips(byGroup);
-  // only one meaningful chip (just "All") -> nothing to filter, keep it hidden.
-  if (chips.length < 2) { host.hidden = true; host.innerHTML = ''; return; }
-  // if the active filter no longer exists in this snapshot, fall back to "all".
-  if (!chips.some(c => c.key === statusFilter)) statusFilter = 'all';
-  host.hidden = false;
-  host.innerHTML = chips.map(c => {
-    const active = c.key === statusFilter;
-    return `<button type="button" role="tab" class="fchip${active ? ' active' : ''}${c.attn ? ' fchip-attn' : ''}"`
-      + ` data-filter="${PB.esc(c.key)}" aria-selected="${active}" aria-pressed="${active}">`
-      + `${PB.esc(c.label)}<span class="fchip-n">${PB.fmtInt(c.count)}</span></button>`;
-  }).join('');
-  host.querySelectorAll('.fchip[data-filter]').forEach(b => {
-    b.onclick = () => {
-      const f = b.getAttribute('data-filter');
-      if (f === statusFilter) return;
-      statusFilter = f;
-      renderBoard(SNAP);
-    };
-  });
-}
 
 function timeAgo(d) {
   const h = (Date.now() - d.getTime()) / 3.6e6;
@@ -230,13 +163,10 @@ function groupRollup(facets) {
   return { fresh, frozen, issues, derived, total: facets.length };
 }
 
-/* ---- one group card ----
-   `forceOpen` (set while a status filter is active) renders the group expanded
-   without touching the user's persisted collapse state — so clearing the filter
-   ("All") restores whatever they had collapsed before. */
-function groupCard(group, facets, forceOpen) {
+/* ---- one group card ---- */
+function groupCard(group, facets) {
   const r = groupRollup(facets);
-  const collapsed = !forceOpen && collapsedGroups.has(group.id);
+  const collapsed = collapsedGroups.has(group.id);
   const attn = r.issues > 0;
 
   const parts = [];
@@ -287,27 +217,14 @@ function renderBoard(snap) {
     byGroup.get(g).push(s);
   }
 
-  // status-filter chips (built from the full, unfiltered set so counts are stable)
-  renderStatusFilter(byGroup);
-
-  // apply the active status filter: keep only matching facets, drop now-empty groups.
-  const filtering = statusFilter !== 'all';
-  const viewByGroup = new Map();
-  for (const [gid, facets] of byGroup) {
-    const kept = filtering ? facets.filter(facetMatchesFilter) : facets;
-    if (kept.length) viewByGroup.set(gid, kept);
-  }
-
   const html = groups.map(g => {
-    const facets = viewByGroup.get(g.id) || [];
+    const facets = byGroup.get(g.id) || [];
     if (!facets.length) return '';
-    // when a filter is active the user is triaging — force matching groups open so the
-    // hits are visible without an extra click; "All" honours the user's collapse state.
-    return groupCard(g, facets, filtering);
+    return groupCard(g, facets);
   }).join('');
 
   board.innerHTML = html
-    || `<div class="loading">${filtering ? 'No sources match this filter.' : 'No sources in snapshot.'}</div>`;
+    || `<div class="loading">No sources in snapshot.</div>`;
   wireBoard();
 }
 
