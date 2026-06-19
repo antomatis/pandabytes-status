@@ -315,6 +315,8 @@ curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/perf/author?days=3
      unsupported. Smooth-scroll on click is handled by CSS scroll-behavior. */
   // hover/focus "#" deep-link anchors on every doc heading (keyless, keyboard-accessible)
   if (typeof PB !== 'undefined' && PB.initHeadingAnchors) PB.initHeadingAnchors();
+  // on-theme "$ curl" copy button on every REST-endpoint H3 (paste-ready command)
+  if (typeof PB !== 'undefined' && PB.initEndpointCurl) PB.initEndpointCurl();
   // if the page loaded with a #hash, the heading now carries a trailing anchor —
   // re-trigger the jump so scroll-margin-top is honored.
   if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }

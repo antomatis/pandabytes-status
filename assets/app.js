@@ -356,6 +356,78 @@ PB.copyAnchorLink = (a, ev) => {
   }
 };
 
+/* Build a paste-ready, single-line curl from a docs <pre> example block.
+   The docs already carry a hand-written, correct curl for each endpoint (right
+   method, full URL, header, example params), so we copy THAT verbatim rather than
+   synthesise a URL — no risk of a wrong path/param. We take only the FIRST curl
+   line of the block (skips response JSON / multi-call quick-starts), collapse its
+   line-continuations into one runnable line, and guarantee the key header is present
+   on key-gated endpoints (the public bootstrap call legitimately has none). */
+PB.curlFromPre = (pre) => {
+  if (!pre) return '';
+  const code = pre.querySelector('code');
+  if (!code) return '';
+  const raw = code.innerText || '';
+  // join shell line-continuations ("\" + newline) so the command is one line
+  const joined = raw.replace(/\\\s*\n\s*/g, ' ');
+  // take the first curl command only (one endpoint = one canonical example line)
+  const line = joined.split('\n').map(s => s.trim()).find(s => /^curl\b/.test(s));
+  if (!line) return '';
+  let cmd = line.replace(/\s+/g, ' ').trim();
+  // ensure the key header is present on key-gated calls (skip the public /v1 + /health
+  // bootstrap, which carries neither header nor ?key= and must stay keyless).
+  const keyless = /\/v1(\/health)?["'\s]*$/.test(cmd);
+  if (!keyless && !/X-API-Key/i.test(cmd) && !/[?&]key=/.test(cmd)) {
+    cmd = cmd.replace(/^curl\b/, 'curl -H "X-API-Key: YOUR_KEY"');
+  }
+  return cmd;
+};
+
+/* Wire a small on-theme "curl" button onto every REST-endpoint H3 (an H3 whose
+   inline <code> names an HTTP method, e.g. "GET /v1/sources"). Clicking copies the
+   ready-to-run curl drawn from that endpoint's example block — method + full URL +
+   X-API-Key header + example params — straight to the clipboard, with a PB.toast
+   confirmation. Idempotent, keyboard-accessible, keyless. Serves AI-agent / MCP
+   consumers who want a paste-and-run command without hunting for the code block. */
+PB.METHOD_RE = /^\s*(GET|POST|PUT|PATCH|DELETE)\s+\/v1\b/i;
+PB.initEndpointCurl = () => {
+  const heads = document.querySelectorAll('.doc h3[id]');
+  heads.forEach(h => {
+    if (h.querySelector('.curlbtn')) return;
+    // endpoint headings carry an inline <code> like "GET /v1/sources"
+    const codes = h.querySelectorAll('code');
+    const isEndpoint = Array.from(codes).some(c => PB.METHOD_RE.test(c.textContent));
+    if (!isEndpoint) return;
+    // find the first example <pre> after this heading that holds a curl line
+    let cmd = '';
+    let n = h.nextElementSibling;
+    while (n && n.tagName !== 'H2' && n.tagName !== 'H3') {
+      if (n.tagName === 'PRE') {
+        const c = PB.curlFromPre(n);
+        if (c) { cmd = c; break; }
+      }
+      n = n.nextElementSibling;
+    }
+    if (!cmd) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'curlbtn';
+    b.dataset.curl = cmd;
+    b.title = 'Copy a ready-to-run curl for this endpoint';
+    b.setAttribute('aria-label', 'Copy curl command for this endpoint');
+    b.innerHTML = '<span class="curlbtn-i" aria-hidden="true">$</span> curl';
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      const txt = b.dataset.curl;
+      const done = () => PB.toast('curl copied');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(done).catch(() => PB.toast('copy failed'));
+      } else { PB.toast('clipboard unavailable'); }
+    });
+    h.appendChild(b);
+  });
+};
+
 /* Wire hover/focus "#" anchors onto every doc heading that has an id.
    Idempotent, keyboard-accessible (real <a> with href), keyless. */
 PB.initHeadingAnchors = () => {
