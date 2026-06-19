@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="550" height="550" viewBox="0 0 550 550">
+  <defs>
+    <clipPath id="bg"><rect width="550" height="550" rx="116"/></clipPath>
+  </defs>
+  <g clip-path="url(#bg)">
+    <!-- background -->
+    <rect width="550" height="550" fill="#F2EEE5"/>
+
+    <!-- ground shadow -->
+    <ellipse cx="275" cy="505" rx="150" ry="24" fill="#000000" opacity="0.06"/>
+
+    <!-- body -->
+    <ellipse cx="275" cy="425" rx="134" ry="116" fill="#FFFFFF" stroke="#E7E1D5" stroke-width="3"/>
+
+    <!-- head -->
+    <circle cx="275" cy="192" r="120" fill="#FFFFFF" stroke="#E7E1D5" stroke-width="3"/>
+
+    <!-- ears -->
+    <circle cx="190" cy="108" r="46" fill="#1A1A1E"/>
+    <circle cx="360" cy="108" r="46" fill="#1A1A1E"/>
+    <circle cx="190" cy="108" r="21" fill="#33333B"/>
+    <circle cx="360" cy="108" r="21" fill="#33333B"/>
+
+    <!-- eye patches -->
+    <ellipse cx="231" cy="190" rx="34" ry="46" fill="#1A1A1E" transform="rotate(-16 231 190)"/>
+    <ellipse cx="319" cy="190" rx="34" ry="46" fill="#1A1A1E" transform="rotate(16 319 190)"/>
+
+    <!-- eyes -->
+    <circle cx="240" cy="186" r="14" fill="#FFFFFF"/>
+    <circle cx="310" cy="186" r="14" fill="#FFFFFF"/>
+    <circle cx="242" cy="188" r="7" fill="#1A1A1E"/>
+    <circle cx="308" cy="188" r="7" fill="#1A1A1E"/>
+    <circle cx="239" cy="184" r="2.6" fill="#FFFFFF"/>
+    <circle cx="305" cy="184" r="2.6" fill="#FFFFFF"/>
+
+    <!-- nose + mouth -->
+    <path d="M260 234 q15 -12 30 0 q-6 18 -15 18 q-9 0 -15 -18 z" fill="#1A1A1E"/>
+    <path d="M275 252 q-12 16 -26 9 M275 252 q12 16 26 9" fill="none" stroke="#1A1A1E" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- server rack (datacenter) being hugged -->
+    <rect x="210" y="330" width="130" height="182" rx="16" fill="#2B2B31"/>
+    <g fill="#3E3E46">
+      <rect x="228" y="348" width="94" height="22" rx="5"/>
+      <rect x="228" y="382" width="94" height="22" rx="5"/>
+      <rect x="228" y="416" width="94" height="22" rx="5"/>
+      <rect x="228" y="450" width="94" height="22" rx="5"/>
+    </g>
+    <circle cx="242" cy="359" r="5" fill="#12B5A4"/>
+    <circle cx="242" cy="393" r="5" fill="#12B5A4"/>
+    <circle cx="242" cy="427" r="5" fill="#F0A63C"/>
+    <circle cx="242" cy="461" r="5" fill="#12B5A4"/>
+
+    <!-- arms hugging the rack -->
+    <path d="M186 300 C150 372 178 444 248 452" fill="none" stroke="#1A1A1E" stroke-width="44" stroke-linecap="round"/>
+    <path d="M364 300 C400 372 372 444 302 452" fill="none" stroke="#1A1A1E" stroke-width="44" stroke-linecap="round"/>
+    <circle cx="250" cy="452" r="26" fill="#1A1A1E"/>
+    <circle cx="300" cy="452" r="26" fill="#1A1A1E"/>
+  </g>
+</svg>

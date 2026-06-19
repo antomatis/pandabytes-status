@@ -87,8 +87,12 @@ header.site .wrap { padding-top: 14px; padding-bottom: 14px; display: flex;
   align-items: center; gap: 16px; flex-wrap: wrap; }
 
 /* BoredPanda-style serif wordmark */
-.brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 21px;
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 21px;
   font-family: var(--serif); color: var(--fg-strong); letter-spacing: -.01em; }
+/* Brand logo: flat minimalist panda + server rack, small icon left of the wordmark.
+   30px sits balanced against the 21px serif; rounded to echo the logo's own corner. */
+.brand-logo { width: 30px; height: 30px; flex: none; border-radius: 7px; display: block; }
+/* Legacy accent dot — retained but unused now the logo image fills the slot. */
 .brand .dot { width: 16px; height: 16px; border-radius: 5px;
   background: linear-gradient(150deg, var(--accent) 0%, var(--accent-deep) 100%);
   box-shadow: 0 1px 4px rgba(215, 75, 31, .4); flex: none; }
