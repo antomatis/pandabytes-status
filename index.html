@@ -18,6 +18,7 @@
   <header class="site">
     <div class="wrap">
       <div class="brand"><img class="brand-logo" src="/assets/pb_logo_32.png" alt="pandabytes" width="30" height="30"> pandabytes <small>status</small></div>
+      <div id="hub-pulse" class="hub-pulse is-loading" role="status" aria-live="polite" aria-label="Hub health summary" hidden></div>
       <nav class="top">
         <a href="index.html" class="active">Dashboard</a>
         <a href="docs.html">Docs &amp; API</a>
@@ -32,6 +33,11 @@
     </div>
     <div id="dash-loading" class="loading">Loading snapshot…</div>
     <div id="board" class="board"></div>
+
+    <div class="section-title" style="margin-top:32px">Usage
+      <span class="muted">— API + MCP request counts · aggregated, no raw data</span>
+    </div>
+    <div id="usage-panel" class="usage-panel"></div>
 
     <p class="tip" style="margin-top:14px">
       Live status of the pandabytes data hub, served same-origin from

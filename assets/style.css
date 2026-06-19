@@ -105,6 +105,33 @@ nav.top a { padding: 7px 14px; border-radius: var(--radius-sm); color: var(--fg-
 nav.top a:hover { background: var(--surface-2); color: var(--fg); text-decoration: none; }
 nav.top a.active { background: var(--accent-soft); color: var(--accent-deep); }
 
+/* ---- hub "pulse" chip — calm, Chartbeat-style one-line summary of overall hub
+   health, derived from the same snapshot the board loads (no extra fetch). Sits in
+   the header next to the wordmark; each segment is a small status dot + count. A
+   deliberately-paused/frozen source counts as "paused", NOT an issue, so a green
+   board with one intentional pause reads as healthy. Quiet pill on the surface wash,
+   no border-shout — it's an at-a-glance status, not an alert. */
+.hub-pulse {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 12px;
+  margin-left: 4px; padding: 5px 12px; border-radius: var(--radius-pill);
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+  font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--fg-dim);
+  line-height: 1.1; }
+.hub-pulse.is-loading { opacity: .55; }
+/* overall verdict word ("All fresh" / "Attention") leads the chip */
+.hub-pulse .pulse-verdict { font-weight: 800; color: var(--fg-strong);
+  letter-spacing: -.01em; }
+.hub-pulse.attn .pulse-verdict { color: #a35d12; }       /* deeper amber when an issue exists */
+.hub-pulse .pulse-seg { display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap; }
+.hub-pulse .pulse-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.hub-pulse .pulse-n { font-weight: 800; color: var(--fg); }
+.hub-pulse .pulse-sep { color: var(--fg-quiet); }
+.pd-fresh   { background: var(--fresh); }
+.pd-issue   { background: var(--stale); }                 /* amber for STALE/STALLED/MISSING */
+.pd-paused  { background: var(--frozen); }                /* slate for deliberate pause/frozen */
+.pd-derived { background: var(--teal); }                  /* derived/pending sources */
+
 /* ---- key bar ---- */
 .keybar {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -217,6 +244,13 @@ button:disabled { opacity: .5; cursor: default; }
    the status badge; wraps under it on narrow rows. */
 .b-planned { background: rgba(91,119,149,.14); color: #455c73; margin-top: 4px;
   text-transform: lowercase; letter-spacing: .02em; }
+/* "PAUSED" badge — a DELIBERATE pause (the source's own prose says PAUSED, or it's a
+   FROZEN/intentionally-not-updated source). Amber-slate so it reads as a calm,
+   on-purpose hold — clearly distinct from a green FRESH source AND from a broken
+   amber STALLED/STALE. Replaces the raw status badge for paused sources so a chosen
+   pause never masquerades as a stall. */
+.b-PAUSED { background: rgba(240,166,60,.18); color: #9a5a08; }
+.b-PAUSED .swatch { background: var(--frozen); }
 .f-badge { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: flex-start; }
 .sw-FRESH { background: var(--fresh);} .sw-STALE{background:var(--stale);} .sw-STALLED{background:var(--stalled);}
 .sw-FROZEN{background:var(--frozen);} .sw-MISSING{background:var(--missing);} .sw-DEPRECATED{background:var(--deprecated);}
@@ -458,6 +492,9 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .g-head { flex-wrap: wrap; }
   nav.top { width: 100%; margin-left: 0; }
   .brand { width: 100%; }
+  /* pulse chip drops to its own full-width line under the wordmark on mobile,
+     so the header never overflows; it wraps internally if segments are many. */
+  .hub-pulse { width: 100%; margin-left: 0; order: 3; box-sizing: border-box; }
   .detail .chart-meta { gap: 10px; }
 }
 

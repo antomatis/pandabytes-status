@@ -74,6 +74,30 @@ function plannedInfo(s) {
   return { progress };
 }
 
+// FLOW-STATE: is this source DELIBERATELY paused (a chosen hold) rather than broken?
+// Two honest signals already in the snapshot — no new backend state invented:
+//   1) status === FROZEN, which the hub already means as "intentionally not updated"
+//      (e.g. facebook, detail: "frozen source (intentionally not updated)"), or
+//   2) the source's own prose (detail/note/label) explicitly says it's PAUSED /
+//      "intentionally not updated" — e.g. reddit_imagined_titles' note: "the bulk
+//      builder, PAUSED 2026-06-19 to conserve quota". Such a source can carry a STALE
+//      status (its latest_date drifts while paused) yet is NOT a stall to fix.
+// When paused we render an amber PAUSED badge in place of the raw status, and the hub
+// pulse counts it as "paused", not an issue — so a deliberate hold never reads as broken.
+// Returns { reason } (a short why, when prose gives one) | {} | null.
+function pausedInfo(s) {
+  const st = PB.normStatus(s.status);
+  const hay = [s.detail, s.note, s.label].map(t => String(t || '')).join('  ');
+  const H = hay.toLowerCase();
+  // explicit pause language, OR the hub's "intentionally not updated" frozen phrasing
+  const declared = /\bpaused\b/.test(H) || /intentionally not updated/.test(H);
+  if (st !== 'FROZEN' && !declared) return null;
+  // lift a short human reason when the prose states one (e.g. "to conserve quota").
+  const m = hay.match(/paused[^.]*?\bto\s+([^.,;)]+)/i);
+  const reason = m ? `to ${m[1].trim()}` : (st === 'FROZEN' ? 'frozen — intentionally not updated' : null);
+  return { reason };
+}
+
 /* ---- per-facet row ---- */
 function facetRow(s) {
   const st = PB.normStatus(s.status);
@@ -93,6 +117,9 @@ function facetRow(s) {
   // catalog-declared PLANNED/nascent source: its small headline is intentional (an
   // early-stage build), not a stalled/broken source — flag it as such, honestly.
   const planned = plannedInfo(s);
+  // flow-state: a DELIBERATELY paused/frozen source (chosen hold), so it reads as
+  // intentional rather than as a broken stall (see pausedInfo).
+  const paused = pausedInfo(s);
 
   let sparkCell;
   if (covErr) {
@@ -137,11 +164,20 @@ function facetRow(s) {
       + `<span class="arch-cap" title="historical archive total — the chart below is the separate live daily feed">total through pre-live archive</span>`
     : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>${plannedCap}`;
 
+  // a deliberately-paused source shows an amber PAUSED badge IN PLACE OF the raw status
+  // (so a chosen hold never reads as a broken stall); its tooltip carries the reason and
+  // the real underlying status for transparency. Otherwise the normal status badge.
+  const statusBadge = paused
+    ? `<span class="badge b-PAUSED"${st && st !== 'UNKNOWN'
+        ? ` title="deliberately paused${paused.reason ? ' ' + PB.esc(paused.reason) : ''} — underlying status: ${PB.esc(st)}"` : ''}>`
+      + `<span class="swatch"></span>PAUSED</span>`
+    : facetBadge(s.status);
+
   let html = `<div class="facet${clickable ? ' clickable' : ''}${isOpen ? ' open' : ''}"`
     + ` data-id="${PB.esc(s.id)}"${clickable ? ' role="button" tabindex="0"' : ''}>
     <div class="f-name">${PB.esc(s.facet || s.id)}<small>${PB.esc(s.label || '')}</small></div>
     <div class="f-metric"><b>${PB.fmtInt(headline)}</b>${metricLbl}</div>
-    <div class="f-badge">${facetBadge(s.status)}${newPill}${plannedPill}</div>
+    <div class="f-badge">${statusBadge}${newPill}${plannedPill}</div>
     <div class="f-spark">${sparkCell}${sparkCap}<div class="synced">${PB.esc(sync.txt)}</div></div>
   </div>`;
 
@@ -399,11 +435,63 @@ function renderUsage(snap) {
     '</div>';
 }
 
+/* ---- hub "pulse": at-a-glance health summary ----
+   Derived from the SAME snapshot the board already loaded (no extra fetch). Buckets
+   every source into one calm category, honoring flow-state so a deliberate pause/frozen
+   source counts as "paused", NOT as an issue:
+     fresh   — status FRESH
+     issue   — STALE / STALLED / MISSING / DEPRECATED *that is not deliberately paused*
+     paused  — pausedInfo(s) → FROZEN or prose-declared PAUSED (a chosen hold)
+     derived — no status (derived/pending vectors etc.)
+   Verdict: "All fresh" when no issues, "Attention" (amber) when any issue exists. */
+function hubPulse(snap) {
+  const sources = snap.sources || [];
+  let fresh = 0, issue = 0, paused = 0, derived = 0;
+  for (const s of sources) {
+    if (pausedInfo(s)) { paused++; continue; }       // deliberate hold — never an issue
+    const st = s.status;
+    if (st == null) { derived++; continue; }
+    if (st === 'FRESH') fresh++;
+    else if (st === 'FROZEN') paused++;              // belt-and-braces (pausedInfo already caught these)
+    else if (PB.PROBLEM.has(st)) issue++;
+    else derived++;                                  // UNKNOWN/other → quiet derived bucket
+  }
+  return { fresh, issue, paused, derived, total: sources.length };
+}
+
+function renderPulse(snap) {
+  const el = document.getElementById('hub-pulse');
+  if (!el) return;
+  const p = hubPulse(snap);
+  const attn = p.issue > 0;
+  const verdict = attn
+    ? (p.issue === 1 ? '1 needs attention' : `${p.issue} need attention`)
+    : 'All fresh';
+
+  // segments in priority order; only render the ones that are non-zero (issue is always
+  // shown when present). Each is a small status dot + count + label.
+  const seg = (cls, n, label, title) =>
+    `<span class="pulse-seg" title="${PB.esc(title)}"><span class="pulse-dot ${cls}"></span>`
+    + `<span class="pulse-n">${n}</span> ${PB.esc(label)}</span>`;
+  const parts = [];
+  if (p.fresh)   parts.push(seg('pd-fresh',   p.fresh,   'fresh',   `${p.fresh} source(s) up to date`));
+  if (p.issue)   parts.push(seg('pd-issue',   p.issue,   p.issue === 1 ? 'stale' : 'stale', `${p.issue} source(s) STALE/STALLED/MISSING — to investigate`));
+  if (p.paused)  parts.push(seg('pd-paused',  p.paused,  'paused',  `${p.paused} source(s) deliberately paused or frozen (intentional hold)`));
+  if (p.derived) parts.push(seg('pd-derived', p.derived, 'derived', `${p.derived} derived/pending source(s) (no freshness status)`));
+
+  el.className = 'hub-pulse' + (attn ? ' attn' : '');
+  el.removeAttribute('hidden');
+  el.innerHTML = `<span class="pulse-verdict">${PB.esc(verdict)}</span>`
+    + `<span class="pulse-sep" aria-hidden="true">·</span>`
+    + parts.join('<span class="pulse-sep" aria-hidden="true">·</span>');
+}
+
 function renderAll(snap) {
   SNAP = snap;
   const loading = document.getElementById('dash-loading');
   if (loading) loading.style.display = 'none';
   applyDefaultCollapse(snap);
+  renderPulse(snap);
   renderBoard(snap);
   renderUsage(snap);
 }
