@@ -6,7 +6,6 @@
 let SNAP = null;             // current snapshot-shaped data being rendered
 const expandedFacets = new Set();   // facet ids whose 30-day column chart is open
 const collapsedGroups = new Set();  // group ids the user has collapsed
-let edDim = 'authors';       // editorial leaderboard active dimension: 'authors' | 'categories'
 let statusFilter = 'all';    // board status-filter chip: 'all' | 'attn' | 'FRESH' | 'FROZEN' | <STATUS>
 
 /* ---- board status filter ("what needs attention") ----
@@ -71,85 +70,6 @@ function renderStatusFilter(byGroup) {
       if (f === statusFilter) return;
       statusFilter = f;
       renderBoard(SNAP);
-    };
-  });
-}
-
-/* ---- editorial leaderboard (Chartbeat-style top authors / categories, 30d) ----
-   Reads snap.editorial_leaders ({authors:[...], categories:[...], days, generated_at}),
-   built read-only into the snapshot by pb_snapshot.py. A ranked list per dimension:
-   rank · name · pageviews · avg engagement. Keyless (same snapshot.json as the board). */
-
-// seconds -> compact "1m 42s" / "42s" for the avg-engagement column.
-function fmtDuration(sec) {
-  if (sec == null || isNaN(sec)) return '—';
-  sec = Math.round(Number(sec));
-  if (sec < 60) return sec + 's';
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return m + 'm' + (s ? ' ' + s + 's' : '');
-}
-
-// one ranked row: rank pill · name · pageviews (big) · avg engagement (quiet).
-function edRow(item, rank, dim) {
-  const name = dim === 'authors' ? (item.author || '—') : (item.category || '—');
-  const pv = item.pageviews;
-  const eng = item.avg_engagement_time;
-  const arts = item.articles;
-  const top3 = rank <= 3 ? ' ed-top' : '';
-  return `<li class="ed-row${top3}">
-    <span class="ed-rank">${rank}</span>
-    <span class="ed-name" title="${PB.esc(name)}">${PB.esc(name)}<small>${PB.fmtInt(arts)} ${arts === 1 ? 'article' : 'articles'}</small></span>
-    <span class="ed-pv"><b>${PB.fmtInt(pv)}</b><small>pageviews</small></span>
-    <span class="ed-eng"><b>${PB.esc(fmtDuration(eng))}</b><small>avg engage</small></span>
-  </li>`;
-}
-
-function renderEditorial(snap) {
-  const host = document.getElementById('editorial');
-  if (!host) return;
-  const el = snap.editorial_leaders;
-  // no editorial block (older snapshot) -> hide the whole section, leave no empty shell.
-  if (!el || (!(el.authors || []).length && !(el.categories || []).length)) {
-    host.hidden = true; host.innerHTML = ''; return;
-  }
-  host.hidden = false;
-  const rows = (el[edDim] || []);
-  const days = el.days || 30;
-  const err = edDim === 'authors' ? el.authors_error : el.categories_error;
-
-  const list = rows.length
-    ? `<ol class="ed-list">${rows.map((r, i) => edRow(r, i + 1, edDim)).join('')}</ol>`
-    : `<div class="ed-empty">${err ? 'Leaderboard temporarily unavailable (catalog busy).' : 'No editorial data in the last ' + days + ' days.'}</div>`;
-
-  host.innerHTML = `
-    <div class="ed-card">
-      <header class="ed-head">
-        <div class="ed-titles">
-          <span class="ed-kicker">Editorial performance</span>
-          <h2 class="ed-title">Top ${edDim === 'authors' ? 'authors' : 'categories'} <span>· last ${days} days</span></h2>
-        </div>
-        <div class="ed-toggle" role="tablist" aria-label="Leaderboard dimension">
-          <button type="button" role="tab" class="ed-tab${edDim === 'authors' ? ' active' : ''}" aria-selected="${edDim === 'authors'}" data-dim="authors">Authors</button>
-          <button type="button" role="tab" class="ed-tab${edDim === 'categories' ? ' active' : ''}" aria-selected="${edDim === 'categories'}" data-dim="categories">Categories</button>
-        </div>
-      </header>
-      <div class="ed-cols" aria-hidden="true">
-        <span class="edc-rank">#</span>
-        <span class="edc-name">${edDim === 'authors' ? 'Author' : 'Category'}</span>
-        <span class="edc-pv">Pageviews</span>
-        <span class="edc-eng">Avg engagement</span>
-      </div>
-      ${list}
-      <div class="ed-foot">Ranked by GA4 pageviews over the trailing ${days} days · avg engagement from Chartbeat · same-origin snapshot, no key needed.</div>
-    </div>`;
-
-  // dimension toggle
-  host.querySelectorAll('.ed-tab[data-dim]').forEach(b => {
-    b.onclick = () => {
-      const d = b.getAttribute('data-dim');
-      if (d === edDim) return;
-      edDim = d;
-      renderEditorial(SNAP);
     };
   });
 }
@@ -534,7 +454,6 @@ function renderAll(snap) {
   if (loading) loading.style.display = 'none';
   applyDefaultCollapse(snap);
   renderFreshness(snap);
-  renderEditorial(snap);
   renderBoard(snap);
 }
 
