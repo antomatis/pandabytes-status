@@ -44,9 +44,10 @@
       <p><b>pandabytes</b> is BoredPanda's central content-performance data hub — a single source of
         truth that unifies editorial publishing, audience analytics, social reach, ad data, and the
         Reddit reference corpus into one DuckDB + parquet catalog. Every upstream source (GA4,
-        Chartbeat, MSN, AOL, Google News, Pinterest, Facebook, the gateway publishing spine, Reddit,
-        and more) is ingested into tidy daily <i>facts</i>, with a freshness view that tells you, at a
-        glance, which sources are current and which need attention.</p>
+        Chartbeat, MSN &amp; AOL competitor engagement, the editorial-feed export, the Facebook Ad
+        Library, the gateway publishing spine, Reddit, and more) is ingested into tidy daily
+        <i>facts</i>, with a freshness view that tells you, at a glance, which sources are current and
+        which need attention.</p>
       <p>The hub exposes a small, <b>read-only</b> HTTP/JSON REST API designed for AI agents and
         dashboards. An API call <i>never</i> triggers an upstream fetch — it only reads the
         already-built catalog — so any query volume is safe and quota-free. This site is a static,
@@ -102,7 +103,7 @@ curl https://pandabytes.restful.zone/v1/health</code></pre>
       <pre><code>{ "ok": true, "data": {
     "status": "ok", "db_ok": true, "db_path": "/DATA/duckdb/pandabytes.db",
     "catalog_built_at": "2026-06-16T13:01:00+03:00", "catalog_age_minutes": 11,
-    "sources_total": 22 },
+    "sources_total": 19 },
   "meta": { "generated_at": "2026-06-16T13:12:00+03:00" } }</code></pre>
 
       <h3 id="get-sources">The source board — <code>GET /v1/sources</code></h3>
@@ -113,12 +114,12 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
     { "id": "ga4", "kind": "metric", "status": "FRESH", "latest_date": "2026-06-17",
       "synced_hours_ago": 0.4, "fact_rows": 28973190,
       "key_metric_name": "pageviews", "key_metric_value": 1176520635 },
-    { "id": "gsc", "kind": "metric", "status": "MISSING", "latest_date": null,
-      "synced_hours_ago": null, "fact_rows": 0,
-      "key_metric_name": "impressions", "key_metric_value": null }
+    { "id": "text_vec", "kind": "vector", "status": "STALE", "latest_date": "2026-06-10",
+      "synced_hours_ago": 210.0, "fact_rows": 5841290,
+      "key_metric_name": "embeddings", "key_metric_value": 5841290 }
   ],
-  "meta": { "count": 22,
-    "status_counts": { "FRESH": 15, "STALE": 1, "STALLED": 0, "MISSING": 1, "FROZEN": 5, "DEPRECATED": 0 },
+  "meta": { "count": 19,
+    "status_counts": { "FRESH": 17, "STALE": 1, "STALLED": 0, "MISSING": 0, "FROZEN": 1, "DEPRECATED": 0 },
     "generated_at": "2026-06-18T19:33:17+03:00" } }</code></pre>
 
       <h3 id="get-source-detail">Source detail — <code>GET /v1/sources/{id}</code></h3>
@@ -149,8 +150,8 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
       <h3 id="get-stats">Hub totals — <code>GET /v1/stats</code></h3>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/stats"</code></pre>
       <pre><code>{ "ok": true, "data": {
-    "total_fact_rows": 3709203475, "sources_total": 22,
-    "status_counts": { "FRESH": 15, "STALE": 1, "STALLED": 0, "MISSING": 1, "FROZEN": 5, "DEPRECATED": 0 },
+    "total_fact_rows": 3709203475, "sources_total": 19,
+    "status_counts": { "FRESH": 17, "STALE": 1, "STALLED": 0, "MISSING": 0, "FROZEN": 1, "DEPRECATED": 0 },
     "biggest_tables": [ { "id": "reddit", "fact_rows": 3588257275 },
                         { "id": "chartbeat", "fact_rows": 72436437 } ] } }</code></pre>
 
@@ -163,7 +164,7 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
       <h3 id="get-articles-top">Top articles — <code>GET /v1/articles/top</code></h3>
       <p>Ranks articles by a metric over the window. Params: <code>?metric=</code> (<code>pageviews</code>
         default · <code>engagement_time</code> · <code>sessions</code> · <code>timespent</code>),
-        <code>?days=</code> (default 30), <code>?limit=</code> (default 50, max 200).</p>
+        <code>?days=</code> (default 30, max 90), <code>?limit=</code> (default 20, max 100).</p>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/articles/top?metric=pageviews&days=30&limit=2"</code></pre>
       <pre><code>{ "ok": true, "data": [
     { "page_path": "/bonnie-blue-baby-shower-guests-reveal-what-cameras-didnt-catch/",
@@ -252,18 +253,21 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
             "generated_at": "2026-06-18T23:58:31+03:00" } }</code></pre>
 
       <h3 id="get-perf-team">By team — <code>GET /v1/perf/team</code></h3>
-      <p>Grouped by editorial <code>team_id</code>. <b>Currently a stub:</b> the author/category &rarr; team
-        mapping tables are not yet populated, so every article resolves to <code>team_id=0</code>
-        (unassigned). The endpoint is live and returns the full team breakdown automatically once those
-        maps land — <code>meta.team_mapping_populated</code> flags the state.</p>
+      <p>Grouped by editorial <code>team_id</code>. Team buckets are BoredPanda's <b>real editorial
+        sections</b>, sourced from the <b>gateway</b> WordPress category taxonomy (each post's
+        <code>categories_raw[].parent</code> rolled up to its top-level section). The mapping is live
+        (<code>meta.mapping_source: "gateway"</code>, <code>meta.team_mapping_populated: true</code>):
+        <code>category_team</code> is BP's child&rarr;root rollup and <code>author_team</code> assigns each
+        author to the section they publish in most. Articles with no resolvable category fall to
+        <code>team_id=0</code> (Unassigned). Params: <code>?days=</code>, <code>?limit=</code>.</p>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -H "X-API-Key: YOUR_KEY" "https://pandabytes.restful.zone/v1/perf/team"</code></pre>
       <pre><code>{ "ok": true, "data": [
-    { "team_id": 0, "team_key": "unassigned", "team_name": "Unassigned",
-      "articles": 76353, "pageviews": 25927273,
-      "avg_engagement_time": 74.96, "timespent": 4284170423 }
+    { "team_id": 4, "team_key": "relationships", "team_name": "Relationships",
+      "articles": 12893, "pageviews": 8442591,
+      "avg_engagement_time": 86.0, "timespent": 1567619443 }
   ],
-  "meta": { "days": 30, "limit": 50, "count": 1,
-            "team_mapping_populated": false,
+  "meta": { "days": 30, "limit": 50, "count": 11,
+            "team_mapping_populated": true, "mapping_source": "gateway",
             "generated_at": "2026-06-18T23:56:19+03:00" } }</code></pre>
 
       <h3 id="error-envelope">Error envelope</h3>
