@@ -415,9 +415,22 @@ function renderUsage(snap) {
     }
     const firstDate = series[0] ? series[0].date : '';
     const lastDate  = series[series.length - 1] ? series[series.length - 1].date : '';
+    // Nascent series caption: usage tracking only began recently, so a 1-3 day window
+    // is the whole history, not a broken/placeholder chart. Caption it the same way the
+    // board captions a just-started source ("tracking started …") so the single bar
+    // reads as "the series builds over time", NOT as faked or missing data. No invented
+    // data — we only label the honest start date the series itself carries.
+    const nascent = n <= 3;
+    const startCap = nascent
+      ? '<span class="usage-spark-cap" title="request tracking began ' + PB.esc(firstDate) +
+          '; this series builds out one bar per day">tracking started ' + PB.esc(firstDate) +
+          ' · series builds over time</span>'
+      : '';
     sparkHTML =
       '<div class="usage-spark-wrap">' +
-        '<div class="usage-spark-title">Daily volume — last ' + n + ' day' + (n === 1 ? '' : 's') + '</div>' +
+        '<div class="usage-spark-title">Daily volume — last ' + n + ' day' + (n === 1 ? '' : 's') +
+          startCap +
+        '</div>' +
         '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
              'role="img" aria-label="Daily API+MCP request volume">' + bars + '</svg>' +
         '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--fg-quiet);margin-top:3px">' +
