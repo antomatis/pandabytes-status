@@ -365,7 +365,229 @@ function applyDefaultCollapse(snap) {
 }
 
 
+/* ---- "Cover now": today's actionable coverage opportunities ----
+   The morning-editor read. Renders snapshot.cover_now.posts — the SPECIFIC fresh, on-brand,
+   uncovered, listicle-ready viral posts (from v_opportunities_now / derived 68), ranked by
+   upvote velocity. Sits ABOVE the source board so the first thing on screen (esp. on a phone)
+   is "what to cover", not "is the plumbing healthy". Served from the SAME snapshot the page
+   already fetched (no key, no extra request). Purely additive + self-hiding: if the block is
+   absent/empty (older snapshot, or simply no opportunities today) the section stays hidden,
+   so the board/leaders/usage below are never affected. Honest by construction — it shows the
+   data's own caveat (velocity = avg-since-birth) as a quiet footnote, mirroring 68/Slack. */
+function coverNowCard(p) {
+  const sub = p.subreddit ? ('r/' + p.subreddit) : '';
+  // permalink is a Reddit-relative path; make it absolute. Fall back to the media url.
+  let href = '';
+  if (p.permalink) href = /^https?:/i.test(p.permalink) ? p.permalink : ('https://www.reddit.com' + p.permalink);
+  else if (p.url) href = p.url;
+  const score = (p.score != null) ? PB.fmtInt(p.score) : '—';
+  const vel   = (p.velocity_per_hr != null) ? PB.fmtInt(Math.round(p.velocity_per_hr)) : null;
+  const age   = (p.days_old != null)
+    ? (p.days_old < 1 ? Math.round(p.days_old * 24) + 'h old' : p.days_old + 'd old')
+    : '';
+  const cov   = (p.sub_pct_covered != null) ? p.sub_pct_covered + '% covered' : '';
+  // compact, scannable metric row: upvotes · velocity · age · subreddit coverage gap
+  const meta = [
+    '<span class="cn-up" title="snapshot upvotes">▲ ' + score + '</span>',
+    vel ? '<span class="cn-vel" title="upvotes per hour since the post was submitted (average rate, not a live delta)">' + vel + '/hr</span>' : '',
+    age ? '<span class="cn-age" title="age of the post">' + PB.esc(age) + '</span>' : '',
+    cov ? '<span class="cn-cov" title="how much of this subreddit&#39;s viral backlog BoredPanda has historically covered — context, not a per-post claim">' + sub + ' · ' + PB.esc(cov) + '</span>'
+        : (sub ? '<span class="cn-cov">' + sub + '</span>' : ''),
+  ].filter(Boolean).join('<span class="cn-dot" aria-hidden="true">·</span>');
+
+  const titleHtml = PB.esc(p.title || '(untitled)');
+  const title = href
+    ? '<a class="cn-title" href="' + PB.esc(href) + '" target="_blank" rel="noopener noreferrer">' + titleHtml + '</a>'
+    : '<span class="cn-title">' + titleHtml + '</span>';
+
+  // Visual decision aid: the reddit post's thumbnail, left of the title. BoredPanda is a
+  // visual brand — seeing the image helps an editor decide "cover this". GRACEFUL BY
+  // CONSTRUCTION: only render an <img> for a real http(s) URL (the snapshot already filters
+  // reddit sentinel values like "self"/"default"/"nsfw"); and reddit hotlinks can 403 on a
+  // third-party origin, so onerror REMOVES the thumb element (it collapses to no-image, never
+  // a broken-image icon). When absent the card lays out exactly as before (no empty gap —
+  // the .cn-thumb element simply isn't emitted). Lazy-loaded; alt empty (decorative). */
+  const turl = (p.thumb && /^https?:\/\//i.test(p.thumb)) ? p.thumb : '';
+  const thumb = turl
+    ? '<img class="cn-thumb" src="' + PB.esc(turl) + '" alt="" loading="lazy" decoding="async" ' +
+      'referrerpolicy="no-referrer" ' +
+      'onerror="this.remove()">'
+    : '';
+
+  return '<div class="cn-card">' +
+    '<div class="cn-rank">' + (p.rank != null ? p.rank : '') + '</div>' +
+    thumb +
+    '<div class="cn-body">' +
+      '<div class="cn-titlewrap">' + title + '</div>' +
+      '<div class="cn-meta">' + meta + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderCoverNow(snap) {
+  const sect  = document.getElementById('cover-now-section');
+  const panel = document.getElementById('cover-now-panel');
+  if (!sect || !panel) return;
+  const cn = snap.cover_now;
+  const posts = (cn && Array.isArray(cn.posts)) ? cn.posts : [];
+  if (!posts.length) { sect.hidden = true; return; }  // self-hide (older snapshot / none today)
+
+  const cards = posts.map(coverNowCard).join('');
+  // quiet honest footnote: carries the view's own caveat so a velocity number is never
+  // over-read as a live delta. Mirrors derived/68 build.sql + the Slack "Cover now" board.
+  const caveat = (cn && cn.caveat)
+    ? '<div class="cn-foot">' + PB.esc(cn.caveat) + '</div>' : '';
+  panel.innerHTML = '<div class="cn-list">' + cards + '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in index.html)
+}
+
+/* ---- "Movers today": already-published articles that suddenly surged ----
+   The other morning-editor read, paired with Cover now. Renders snapshot.movers.articles —
+   each an article whose pageviews on the latest COMPLETE GA4 day jumped sharply vs its OWN
+   trailing 7-day daily average (computed honestly server-side: the partial current day is
+   excluded; only established pages with real history qualify). Chartbeat-style row: title +
+   ▲ pageviews + the jump ("↑3.2× vs 7d avg"). Served from the SAME snapshot the page already
+   fetched (no key, no extra request). Purely additive + self-hiding: absent/empty block, or a
+   STALE snapshot, leaves the section hidden so the rest of the page is never affected. Honest
+   by construction — carries the data's own caveat (partial-day handling) as a quiet footnote. */
+function moverFmtJump(r) {
+  // ratio phrasing the editor reads at a glance. >=10x -> integer (15×), else one decimal (3.2×).
+  if (r == null || !isFinite(r)) return '';
+  return (r >= 10 ? Math.round(r) : (Math.round(r * 10) / 10)) + '×';
+}
+// Title fallback for a riser the article spine hasn't caught up to: humanise the slug.
+// "/dumb-home-improvement-fails/" -> "Dumb home improvement fails".
+function moverSlugTitle(pp) {
+  const slug = String(pp || '').replace(/^\/+|\/+$/g, '');
+  if (!slug) return '(untitled)';
+  const words = slug.replace(/-/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+function moverCard(m, rank) {
+  // url from the spine, else build the canonical BoredPanda url from the page_path.
+  let href = m.url || '';
+  if (!href && m.page_path) href = 'https://www.boredpanda.com' + m.page_path;
+  const titleHtml = PB.esc(m.title || moverSlugTitle(m.page_path));
+  const title = href
+    ? '<a class="mv-title" href="' + PB.esc(href) + '" target="_blank" rel="noopener noreferrer">' + titleHtml + '</a>'
+    : '<span class="mv-title">' + titleHtml + '</span>';
+  const pv = (m.pageviews != null) ? PB.fmtInt(m.pageviews) : '—';
+  const jump = moverFmtJump(m.jump_ratio);
+  const base = (m.base_avg_pv != null) ? PB.fmtInt(m.base_avg_pv) : null;
+  // compact, scannable metric row: pageviews · the jump vs 7d avg · author
+  const meta = [
+    '<span class="mv-pv" title="pageviews on the latest complete GA4 day">▲ ' + pv + ' views</span>',
+    jump ? '<span class="mv-jump" title="' + (base ? 'vs a ' + PB.esc(base) + '/day trailing 7-day average' : 'vs this article’s trailing 7-day daily average') + '">↑' + jump + ' vs 7d avg</span>' : '',
+    m.author ? '<span class="mv-by" title="author">' + PB.esc(m.author) + '</span>' : '',
+  ].filter(Boolean).join('<span class="mv-dot" aria-hidden="true">·</span>');
+
+  return '<div class="mv-card">' +
+    '<div class="mv-rank">' + (rank != null ? rank : '') + '</div>' +
+    '<div class="mv-body">' +
+      '<div class="mv-titlewrap">' + title + '</div>' +
+      '<div class="mv-meta">' + meta + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderMovers(snap) {
+  const sect  = document.getElementById('movers-section');
+  const panel = document.getElementById('movers-panel');
+  if (!sect || !panel) return;
+  const mv = snap.movers;
+  const arts = (mv && Array.isArray(mv.articles)) ? mv.articles : [];
+  // self-hide on empty/older snapshot. Also hide on a STALE snapshot: a "surging now"
+  // claim from a snapshot that's > staleMin old would be a quiet lie about freshness.
+  const age = PB.snapshotAge(snap && snap.generated_at);
+  if (!arts.length || age.stale) { sect.hidden = true; return; }
+
+  const sub = document.getElementById('movers-sub');
+  if (sub && mv.recent_day) {
+    // label the COMPLETE day the jump is measured on — never imply "today" (partial GA4 day).
+    sub.textContent = '— already-published articles surging vs their own 7-day average · as of ' + mv.recent_day;
+  }
+  const cards = arts.map(function(m, i) { return moverCard(m, i + 1); }).join('');
+  const caveat = (mv && mv.caveat)
+    ? '<div class="mv-foot">' + PB.esc(mv.caveat) + '</div>' : '';
+  panel.innerHTML = '<div class="mv-list">' + cards + '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in index.html)
+}
+
 /* ---- Usage panel ---- */
+
+// ── "Lopsided winners" — cross-platform outliers, pushable to a 2nd platform.
+// Same card grammar as movers/cover-now, but a TEAL "redistribute" rail and a
+// per-card ACTION line (the replicable next move). Reads snapshot.lopsided_winners,
+// which the snapshot builder fills from v_cross_platform_outliers — the same view the
+// Slack daily digest reads, so the dashboard and the digest never disagree.
+function lopsidedSlugTitle(pp) {
+  const slug = String(pp || '').replace(/^\/+|\/+$/g, '');
+  if (!slug) return '(untitled)';
+  const words = slug.replace(/-/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// short, human label for the winning platform shown on the trophy chip.
+function lopsidedPlatLabel(p) {
+  const k = String(p || '').trim().toLowerCase();
+  return ({ ga4: 'GA4 traffic', chartbeat: 'engagement', bp_views: 'on-site',
+            reddit: 'Reddit', facebook: 'Facebook', pinterest: 'Pinterest'
+          })[k] || (p || '?');
+}
+
+function lopsidedCard(w, rank) {
+  // url: build the canonical BoredPanda url from the page_path (the view has no url col).
+  const href = w.page_path ? ('https://www.boredpanda.com' + w.page_path) : '';
+  const titleHtml = PB.esc(w.title || lopsidedSlugTitle(w.page_path));
+  const title = href
+    ? '<a class="lw-title" href="' + PB.esc(href) + '" target="_blank" rel="noopener noreferrer">' + titleHtml + '</a>'
+    : '<span class="lw-title">' + titleHtml + '</span>';
+
+  const win  = lopsidedPlatLabel(w.winning_platform);
+  const wpct = (w.winning_percentile != null)
+    ? Math.round(w.winning_percentile * 100) + 'th pct' : null;
+  const missing = w.missing_platforms ? String(w.missing_platforms) : '';
+
+  // metric row: where it won (+ its percentile) · where it's absent
+  const meta = [
+    '<span class="lw-win" title="the single platform this article ranks highest on">🏆 ' + PB.esc(win) +
+      (wpct ? ' <span class="lw-pct">' + PB.esc(wpct) + '</span>' : '') + '</span>',
+    missing ? '<span class="lw-miss" title="platforms where this article is in the bottom ~30% — the push opportunity">absent on ' + PB.esc(missing) + '</span>' : '',
+  ].filter(Boolean).join('<span class="lw-dot" aria-hidden="true">·</span>');
+
+  // the replicable next move, supplied by the snapshot (kept in sync with the Slack digest).
+  const action = w.action
+    ? '<div class="lw-action" title="the replicable next move for this lopsided winner">💡 ' + PB.esc(w.action) + '</div>'
+    : '';
+
+  return '<div class="lw-card">' +
+    '<div class="lw-rank">' + (rank != null ? rank : '') + '</div>' +
+    '<div class="lw-body">' +
+      '<div class="lw-titlewrap">' + title + '</div>' +
+      '<div class="lw-meta">' + meta + '</div>' +
+      action +
+    '</div>' +
+  '</div>';
+}
+
+function renderLopsided(snap) {
+  const sect  = document.getElementById('lopsided-section');
+  const panel = document.getElementById('lopsided-panel');
+  if (!sect || !panel) return;
+  const lw = snap.lopsided_winners;
+  const wins = (lw && Array.isArray(lw.winners)) ? lw.winners : [];
+  // self-hide on empty/older snapshot. Also hide on a STALE snapshot — an "absent on X"
+  // claim from a snapshot well past its refresh window would be a quiet lie about freshness.
+  const age = PB.snapshotAge(snap && snap.generated_at);
+  if (!wins.length || age.stale) { sect.hidden = true; return; }
+
+  const cards  = wins.map(function (w, i) { return lopsidedCard(w, w.rank != null ? w.rank : i + 1); }).join('');
+  const caveat = (lw && lw.caveat)
+    ? '<div class="lw-foot">' + PB.esc(lw.caveat) + '</div>' : '';
+  panel.innerHTML = '<div class="lw-list">' + cards + '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in index.html)
+}
+
 function renderUsage(snap) {
   const panel = document.getElementById('usage-panel');
   if (!panel) return;
@@ -613,6 +835,9 @@ function renderAll(snap) {
   if (loading) loading.style.display = 'none';
   applyDefaultCollapse(snap);
   renderPulse(snap);
+  renderCoverNow(snap);   // morning-editor "what to cover now" — above the source board
+  renderMovers(snap);     // morning-editor "what already surged" — paired with cover-now
+  renderLopsided(snap);   // replicable wins — articles big on one platform, pushable to another
   renderBoard(snap);
   renderLeaders(snap);
   renderUsage(snap);

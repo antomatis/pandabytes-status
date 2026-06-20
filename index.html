@@ -29,6 +29,46 @@
 
   <main class="wrap">
     <h1 class="sr-only">pandabytes status dashboard</h1>
+
+    <!-- "Cover now": the morning-editor read — today's specific, actionable coverage
+         opportunities (fresh on-brand viral posts BP hasn't covered), surfaced ABOVE the
+         source board so the first thing on screen (esp. on mobile) is what to DO, not the
+         plumbing. Populated by renderCoverNow() from snapshot.cover_now; self-hides when
+         the block is absent/empty (older snapshot / no opportunities). -->
+    <section id="cover-now-section" hidden>
+      <div class="section-title">Cover now
+        <span class="muted" id="cover-now-sub">— fresh on-brand viral posts not yet covered · ranked by upvote velocity</span>
+      </div>
+      <div id="cover-now-panel" class="cover-now-panel"></div>
+    </section>
+
+    <!-- "Movers today": the other morning-editor read, paired with Cover now — articles
+         BoredPanda ALREADY published that suddenly took off. Each row = title + ▲ pageviews
+         on the latest COMPLETE GA4 day + the jump vs that article's own 7-day daily average
+         ("↑3.2× vs 7d avg"). Populated by renderMovers() from snapshot.movers; self-hides
+         when the block is absent/empty (older snapshot / nothing moving) or stale. -->
+    <section id="movers-section" hidden>
+      <div class="section-title">Movers today
+        <span class="muted" id="movers-sub">— already-published articles surging vs their own 7-day average</span>
+      </div>
+      <div id="movers-panel" class="movers-panel"></div>
+    </section>
+
+
+    <!-- "Lopsided winners": the replicable-win read — BoredPanda articles that crushed it
+         on ONE platform but are absent on others, so the editor can REPLICATE the win on a
+         second channel (SEO refresh, social re-promo, Reddit syndication). Distinct from
+         Cover now (acquire a new post) and Movers (observe an own surge): this is "you
+         already have a winner — go push it elsewhere." Same view the Slack daily digest
+         reads (single source of truth). Populated by renderLopsided() from
+         snapshot.lopsided_winners; self-hides when the block is absent/empty or stale. -->
+    <section id="lopsided-section" hidden>
+      <div class="section-title">Lopsided winners
+        <span class="muted" id="lopsided-sub">— big on one platform, absent on others · push the win to a 2nd channel</span>
+      </div>
+      <div id="lopsided-panel" class="lopsided-panel"></div>
+    </section>
+
     <div class="section-title">Sources
       <span class="muted">— grouped by source · click a group to collapse · click a facet for its 30-day coverage chart</span>
     </div>
