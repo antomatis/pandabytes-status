@@ -89,6 +89,18 @@
       <div id="leaders-panel" class="leaders-panel"></div>
     </section>
 
+    <!-- "Efficiency MVPs": the cross-source pivot the volume-ranked Editorial leaders board can't
+         give — authors ranked by engaged-sessions PER ARTICLE (impact, not volume), joining the
+         articles spine × GA4 engaged-sessions × GA4 category. Surfaces the precision MVPs hidden
+         behind raw output. Populated by renderEfficiency() from snapshot.efficiency_leaders;
+         self-hides when the block is absent/empty (older snapshot / none). -->
+    <section id="efficiency-section" hidden>
+      <div class="section-title" style="margin-top:32px">Efficiency MVPs
+        <span class="muted" id="efficiency-window">— engaged sessions per article · impact, not volume</span>
+      </div>
+      <div id="efficiency-panel" class="efficiency-panel"></div>
+    </section>
+
     <div id="ideas-loading" class="loading">Loading snapshot…</div>
 
     <p class="tip" style="margin-top:14px">

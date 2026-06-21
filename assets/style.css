@@ -99,10 +99,9 @@ header.site .wrap { padding-top: 14px; padding-bottom: 14px; display: flex;
 /* BoredPanda-style serif wordmark */
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 21px;
   font-family: var(--serif); color: var(--fg-strong); letter-spacing: -.01em; }
-/* Brand logo: clean light-blue rounded-square app icon (server rack centered, wordmark band
-   cropped out) regenerated from assets/pb_logo.png. 38px sits balanced against the 21px serif;
-   the source PNG already carries rounded corners, the border-radius just echoes them. */
-.brand-logo { width: 38px; height: 38px; flex: none; border-radius: 9px; display: block; }
+/* Brand logo: flat minimalist panda + server rack, small icon left of the wordmark.
+   30px sits balanced against the 21px serif; rounded to echo the logo's own corner. */
+.brand-logo { width: 30px; height: 30px; flex: none; border-radius: 7px; display: block; }
 /* Legacy accent dot — retained but unused now the logo image fills the slot. */
 .brand .dot { width: 16px; height: 16px; border-radius: 5px;
   background: linear-gradient(150deg, var(--accent) 0%, var(--accent-deep) 100%);
@@ -129,10 +128,6 @@ nav.top a.active { background: var(--accent-soft); color: var(--accent-deep); }
   font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--fg-dim);
   line-height: 1.1; }
 .hub-pulse.is-loading { opacity: .55; }
-/* the pill ships [hidden] and is revealed by JS once populated (index: the health
-   summary; ideas: the standalone freshness stamp). The author `display` above would
-   otherwise override the UA [hidden] rule, flashing an empty pill before JS runs. */
-.hub-pulse[hidden] { display: none; }
 /* overall verdict word ("All fresh" / "Attention") leads the chip */
 .hub-pulse .pulse-verdict { font-weight: 800; color: var(--fg-strong);
   letter-spacing: -.01em; }
@@ -683,6 +678,33 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .lead-name { width: 38%; }
 }
 
+/* ---- "Efficiency MVPs" — engaged-sessions/article leaderboard ----
+   Reuses the .lead-* leaderboard table chrome (same card, table, rank, name, bar-meter)
+   so it reads as a sibling of Editorial leaders; only the category chip + the caveat
+   footnote are new. Single full-width card (one ranking, not the two-up authors/categories
+   grid), so it stretches rather than sitting in a half-width column. */
+.efficiency-panel { display: block; }
+.efficiency-panel .lead-card { max-width: 640px; }
+/* the author's winning lane, a small inline chip after the name (quiet, not a second column
+   so it survives the mobile name truncation gracefully — wraps under the name on narrow). */
+.ef-cat {
+  display: inline-block; margin-left: 8px; padding: 1px 7px;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  color: var(--teal); background: var(--teal-soft);
+  border-radius: 999px; vertical-align: middle; white-space: nowrap;
+}
+/* caveat footnote — same quiet-footnote grammar as cover-now / movers / lopsided. */
+.lead-foot {
+  font-size: 11px; color: var(--fg-quiet); line-height: 1.45;
+  padding: 9px 4px 0; max-width: 760px;
+}
+@media (max-width: 560px) {
+  .efficiency-panel .lead-card { max-width: 100%; }
+  /* on narrow screens let the chip drop below the name so neither truncates the other. */
+  .efficiency-panel .lead-name { white-space: normal; }
+  .ef-cat { margin-left: 0; margin-top: 3px; }
+}
+
 /* ---- "Cover now" — today's actionable coverage opportunities ----
    The morning-editor read, ABOVE the source board. A compact, scannable card list of the
    specific fresh on-brand viral posts BP hasn't covered, ranked by upvote velocity. Built
@@ -706,16 +728,6 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   flex: 0 0 auto; min-width: 18px; text-align: center;
   font-weight: 800; font-size: 13px; color: var(--accent);
   font-variant-numeric: tabular-nums; line-height: 1.5;
-}
-/* Visual decision aid: the reddit post's thumbnail, between the rank and the body (left of
-   the title). Fixed small square so the metric rows stay aligned; object-fit: cover crops
-   reddit's non-square previews cleanly. Graceful absence: the element is simply not emitted
-   when there's no usable URL (or onerror-removed on a 403 hotlink), so the card collapses
-   back to rank+title with no empty gap. */
-.cn-thumb {
-  flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--radius-sm);
-  object-fit: cover; background: var(--surface-2); border: 1px solid var(--border-soft);
-  display: block;
 }
 .cn-body { flex: 1 1 auto; min-width: 0; }
 .cn-titlewrap { margin-bottom: 4px; }
@@ -742,7 +754,6 @@ a.cn-title:hover { color: var(--link); text-decoration: underline; }
   .cn-card { padding: 11px 13px; gap: 10px; }
   .cn-title { font-size: 14px; }
   .cn-meta { font-size: 11.5px; }
-  .cn-thumb { width: 40px; height: 40px; }
 }
 
 /* ---- "Movers today" — paired with Cover now: already-published articles surging.
@@ -792,56 +803,3 @@ a.mv-title:hover { color: var(--link); text-decoration: underline; }
   .mv-title { font-size: 14px; }
   .mv-meta { font-size: 11.5px; }
 }
-
-/* ---- "Lopsided winners" — cross-platform outliers, pushable to a 2nd platform.
-   Same card grammar as .cn-* / .mv-* but a TEAL "redistribute" rail (distinct from
-   cover-now's accent "acquire" rail and movers' green "surge" rail) plus a per-card
-   ACTION line — the replicable next move. Renders from snapshot.lopsided_winners. */
-.lopsided-panel { margin-bottom: 6px; }
-.lw-list {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
-}
-.lw-card {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 16px; border-bottom: 1px solid var(--border-soft);
-  border-left: 3px solid var(--teal);     /* teal "redistribute" rail */
-  transition: background .12s ease;
-}
-.lw-card:last-child { border-bottom: none; }
-.lw-card:hover { background: var(--teal-soft); }
-.lw-rank {
-  flex: 0 0 auto; min-width: 18px; text-align: center;
-  font-weight: 800; font-size: 13px; color: var(--teal);
-  font-variant-numeric: tabular-nums; line-height: 1.5;
-}
-.lw-body { flex: 1 1 auto; min-width: 0; }
-.lw-titlewrap { margin-bottom: 4px; }
-.lw-title {
-  font-size: 14.5px; font-weight: 600; color: var(--fg-strong);
-  line-height: 1.35; text-decoration: none;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-a.lw-title:hover { color: var(--link); text-decoration: underline; }
-.lw-meta {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px;
-  font-size: 12px; color: var(--fg-faint); font-variant-numeric: tabular-nums;
-}
-.lw-win  { color: var(--teal); font-weight: 700; }        /* winning platform — the teal signal */
-.lw-pct  { color: var(--fg-quiet); font-weight: 600; }    /* its percentile, quiet */
-.lw-miss { color: var(--fg-faint); }                      /* the absent-on (push) platforms */
-.lw-dot  { color: var(--fg-quiet); }
-.lw-action {
-  margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--accent-deep);
-  line-height: 1.35;                                       /* the replicable "do this" move */
-}
-.lw-foot {
-  font-size: 11px; color: var(--fg-quiet); line-height: 1.45;
-  padding: 9px 4px 0; max-width: 760px;
-}
-@media (max-width: 560px) {
-  .lw-card { padding: 11px 13px; gap: 10px; }
-  .lw-title { font-size: 14px; }
-  .lw-meta, .lw-action { font-size: 11.5px; }
-}
-

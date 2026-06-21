@@ -734,6 +734,75 @@ function renderLeaders(snap) {
   sect.hidden = false;
 }
 
+/* ---- "Efficiency MVPs": engaged-sessions PER ARTICLE leaderboard ----
+   The cross-source pivot the standings board can't give. Editorial leaders (above) ranks
+   authors by TOTAL pageviews — so it's a VOLUME board, dominated by high-output writers.
+   This panel instead joins the articles spine (author) × GA4 engaged-sessions × GA4 category
+   and ranks by engaged-sessions ÷ articles published — the EFFICIENCY read, surfacing the
+   MVPs hidden behind raw volume (a 39-article author at ~16.7K engaged-sessions/article can
+   outrank a 373-article author at ~3.8K). Each row carries the author's top category (their
+   winning lane). Reads snapshot.efficiency_leaders, computed server-side from the SAME
+   pre-aggregated fact the editorial board uses (no key, no extra request). Purely additive +
+   self-hiding: absent/empty block (older snapshot / none) leaves the section hidden, so the
+   four existing pivots widgets are never affected. Honest by construction — carries the data's
+   own caveat (efficiency not volume; min-articles floor) as a quiet footnote, like the others. */
+function efficiencyCard(a, rank, max) {
+  const epa = (a.eng_per_article != null) ? a.eng_per_article : 0;
+  const pct = Math.max(2, (epa / max) * 100);   // bar-meter relative to the top row
+  const cat = a.top_category
+    ? '<span class="ef-cat" title="this author’s highest-pageview category over the window">' + PB.esc(a.top_category) + '</span>'
+    : '';
+  const arts = (a.articles != null) ? PB.fmtInt(a.articles) : '—';
+  const eng  = (a.engaged_sessions != null) ? PB.fmtInt(a.engaged_sessions) : '—';
+  return '<tr>' +
+    '<td class="lead-rank">' + (rank != null ? rank : '') + '</td>' +
+    '<td class="lead-name" title="' + PB.esc(a.author || '') + '">' + PB.esc(a.author || '—') + cat + '</td>' +
+    '<td class="lead-arts">' + arts + '</td>' +
+    '<td class="lead-pv">' +
+      '<span class="lead-bar" style="width:' + pct.toFixed(1) + '%" aria-hidden="true"></span>' +
+      '<span class="lead-pv-n" title="engaged sessions per article published in the window">' + PB.fmtInt(epa) + '</span>' +
+    '</td>' +
+    '<td class="lead-eng" title="total GA4 engaged sessions over the window">' + eng + '</td>' +
+  '</tr>';
+}
+
+function renderEfficiency(snap) {
+  const sect  = document.getElementById('efficiency-section');
+  const panel = document.getElementById('efficiency-panel');
+  if (!sect || !panel) return;   // guard: no-op on pages without this section
+  const eff = snap.efficiency_leaders;
+  const authors = (eff && Array.isArray(eff.authors)) ? eff.authors : [];
+  if (!authors.length) { sect.hidden = true; return; }   // self-hide (older snapshot / none)
+
+  // already ranked server-side by eng_per_article desc; bar-meter relative to the top row.
+  const max = Math.max(1, authors[0].eng_per_article || 0);
+  const rows = authors.map(function (a, i) { return efficiencyCard(a, i + 1, max); }).join('');
+
+  // window caption pulled straight from the snapshot — no invented label.
+  const cap = document.getElementById('efficiency-window');
+  if (cap) {
+    const days = eff && eff.days;
+    cap.textContent = days
+      ? ('— engaged sessions per article · last ' + days + ' days · impact, not volume')
+      : '— engaged sessions per article · impact, not volume';
+  }
+
+  const caveat = (eff && eff.caveat)
+    ? '<div class="lead-foot">' + PB.esc(eff.caveat) + '</div>' : '';
+  panel.innerHTML =
+    '<div class="lead-card">' +
+      '<div class="lead-card-title">Efficiency MVPs — engaged sessions / article</div>' +
+      '<table class="lead-table"><thead><tr>' +
+        '<th class="lead-rank"></th>' +
+        '<th class="lead-name">Author</th>' +
+        '<th class="lead-arts">Articles</th>' +
+        '<th class="lead-pv">Eng/article</th>' +
+        '<th class="lead-eng" title="total engaged sessions over the window">Total&nbsp;eng.</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
+}
+
 /* ---- hub "pulse": at-a-glance health summary ----
    Derived from the SAME snapshot the board already loaded (no extra fetch). Buckets
    every source into one calm category, honoring flow-state so a deliberate pause/frozen
@@ -857,6 +926,7 @@ function renderAll(snap) {
   renderLopsided(snap);   // replicable wins — articles big on one platform, pushable to another
   renderBoard(snap);      // source board — index only (guarded)
   renderLeaders(snap);    // editorial leaders — index only (guarded)
+  renderEfficiency(snap); // efficiency MVPs — engaged-sessions/article (pivots only, guarded)
   renderUsage(snap);      // usage panel — index only (guarded)
 }
 
