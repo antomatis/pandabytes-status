@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pandabytes — MCP server</title>
-  <meta name="description" content="The pandabytes MCP (Model Context Protocol) server: one remote URL works in every client — claude.ai, Claude Code, Claude Desktop, Cursor — over Streamable HTTP. 3 read-only tools: describe_schema, query (sandboxed SELECT), agentic_query.">
+  <title>pandabytes — MCP quickstart</title>
+  <meta name="description" content="Self-serve the pandabytes MCP connector in 3 steps: enter your @boredpanda.com email, confirm via the link we email you, then paste your ready-to-go MCP URL into claude.ai. Read-only, one URL, every client.">
   <link rel="icon" href="/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/pb_logo_32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/pb_logo_16.png">
@@ -14,20 +14,60 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&display=swap">
   <link rel="stylesheet" href="assets/style.css">
   <style>
-    /* Demoted, collapsed "local stdio" footnote — secondary to the one remote URL above. */
-    .doc details.local-stdio { margin: 28px 0 4px; padding: 0; border: 1px solid var(--border-soft);
+    /* ---- 3-step MCP quickstart (scoped to this page) ---- */
+    .mcp-quick { max-width: 720px; margin: 0 auto; }
+    .mcp-lead { color: var(--fg-faint); font-size: 15px; margin: 4px 0 26px; }
+    .step { position: relative; border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+      background: var(--surface-2); padding: 20px 22px 20px 64px; margin: 0 0 16px; }
+    .step.is-done { opacity: .62; }
+    .step.is-active { border-color: var(--accent, #c9a227); box-shadow: 0 0 0 1px var(--accent, #c9a227) inset; }
+    .step .num { position: absolute; left: 18px; top: 18px; width: 30px; height: 30px; border-radius: 50%;
+      display: grid; place-items: center; font-weight: 800; font-size: 14px;
+      background: var(--surface-3, #232a32); color: var(--fg-faint); border: 1px solid var(--border-soft); }
+    .step.is-active .num { background: var(--accent, #c9a227); color: #0d0f12; border-color: var(--accent, #c9a227); }
+    .step.is-done .num { background: #2ea043; color: #0d0f12; border-color: #2ea043; }
+    .step.is-done .num::after { content: "✓"; }
+    .step.is-done .num span { display: none; }
+    .step h3 { margin: 2px 0 4px; font-size: 16px; }
+    .step .hint { color: var(--fg-faint); font-size: 13.5px; margin: 0 0 14px; }
+    .mcp-field { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mcp-field input[type=email] { flex: 1 1 240px; min-width: 0; padding: 12px 14px; border-radius: 9px;
+      border: 1px solid var(--border-soft); background: var(--surface, #12161b); color: var(--fg);
+      font-size: 15px; font-family: inherit; }
+    .mcp-field input[type=email]:focus { outline: none; border-color: var(--accent, #c9a227); }
+    .mcp-field button { flex: 0 0 auto; cursor: pointer; border: none; border-radius: 9px; padding: 12px 20px;
+      font-weight: 700; font-size: 14.5px; background: var(--accent, #c9a227); color: #0d0f12; font-family: inherit; }
+    .mcp-field button:hover { filter: brightness(1.07); }
+    .mcp-field button:disabled { opacity: .55; cursor: default; }
+    .mcp-msg { margin-top: 12px; font-size: 14px; display: none; }
+    .mcp-msg.show { display: block; }
+    .mcp-msg.ok { color: #3fb950; }
+    .mcp-msg.err { color: #f0883e; }
+    .mcp-resend { margin-top: 12px; font-size: 13px; color: var(--fg-faint); }
+    .mcp-resend a { color: var(--accent, #c9a227); cursor: pointer; }
+    .urlrow { display: flex; gap: 8px; align-items: stretch; margin: 4px 0 0; }
+    .urlrow code { flex: 1; min-width: 0; background: var(--surface, #12161b); border: 1px solid var(--border-soft);
+      border-radius: 9px; padding: 12px 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px; overflow-x: auto; white-space: nowrap; }
+    .urlrow button { flex: 0 0 auto; }
+    .gotolink { display: inline-block; margin-top: 16px; background: var(--accent, #c9a227); color: #0d0f12;
+      text-decoration: none; font-weight: 700; font-size: 14.5px; border-radius: 9px; padding: 11px 18px; }
+    .gotolink:hover { filter: brightness(1.07); }
+    .step3-extra { margin: 14px 0 0; padding: 0 0 0 18px; color: var(--fg-faint); font-size: 13.5px; }
+    .step3-extra li { margin: 5px 0; }
+    .step3-extra b { color: var(--fg); }
+    .domain-note { font-size: 13px; color: var(--fg-faint); margin-top: 6px; }
+    .domain-note b { color: var(--fg); }
+    /* Collapsed advanced / per-client footnote. */
+    .doc details.advanced { margin: 30px 0 4px; padding: 0; border: 1px solid var(--border-soft);
       border-radius: var(--radius-sm); background: var(--surface-2); }
-    .doc details.local-stdio > summary { cursor: pointer; list-style: none; padding: 11px 15px;
-      font-size: 12px; font-weight: 600; color: var(--fg-faint); user-select: none; }
-    .doc details.local-stdio > summary::-webkit-details-marker { display: none; }
-    .doc details.local-stdio > summary::before { content: "▸"; margin-right: 8px; color: var(--fg-faint);
-      font-size: 10px; }
-    .doc details.local-stdio[open] > summary::before { content: "▾"; }
-    .doc details.local-stdio[open] > summary { border-bottom: 1px solid var(--border-soft); }
-    .doc details.local-stdio > :not(summary) { margin-left: 15px; margin-right: 15px; }
-    .doc details.local-stdio > p { font-size: 13px; color: var(--fg-faint); }
-    .doc details.local-stdio > pre { font-size: 12px; }
-    .doc details.local-stdio > :last-child { margin-bottom: 14px; }
+    .doc details.advanced > summary { cursor: pointer; list-style: none; padding: 12px 16px;
+      font-size: 13px; font-weight: 600; color: var(--fg-faint); user-select: none; }
+    .doc details.advanced > summary::-webkit-details-marker { display: none; }
+    .doc details.advanced > summary::before { content: "▸"; margin-right: 8px; color: var(--fg-faint); font-size: 10px; }
+    .doc details.advanced[open] > summary::before { content: "▾"; }
+    .doc details.advanced > :not(summary) { margin-left: 16px; margin-right: 16px; }
+    .doc details.advanced > :last-child { margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -44,241 +84,173 @@
     </div>
   </header>
 
-  <h1 class="sr-only">pandabytes — MCP server</h1>
-  <main class="wrap doc-layout">
-    <!-- in-page section nav: sticky on desktop, a horizontal scroll-strip on mobile.
-         Links jump to the H2 ids below; scroll-spy (app.js) marks the section in view. -->
-    <aside class="doc-toc" aria-label="On this page">
-      <div class="doc-toc-title">On this page</div>
-      <nav class="doc-toc-nav">
-        <a href="#mcp">MCP server</a>
-        <a href="#connect">Connect (works everywhere)</a>
-        <a href="#first-calls">First calls (quickstart)</a>
-        <a href="#clients">Per-client setup</a>
-        <a href="#tools">The 3 tools</a>
-        <a href="#tool-describe-schema">describe_schema</a>
-        <a href="#tool-query">query</a>
-        <a href="#tool-agentic-query">agentic_query</a>
-      </nav>
-    </aside>
-    <div class="doc">
-      <h2 id="mcp">pandabytes MCP server</h2>
-      <p>The hub ships an <b>MCP</b> (Model Context Protocol) server so AI agents can query the catalog
-        natively — no HTTP plumbing. It wraps the same <b>read-only</b> surface as the
-        <a href="docs.html#rest">REST API</a>: an MCP call never triggers an upstream fetch, it only
-        reads the already-built catalog, so any query volume is safe and quota-free. Errors surface as
-        the REST error envelope (<code>{ ok:false, error, code, hint }</code>) so an agent can
-        self-correct on <code>hint</code>.</p>
-      <p>The surface is deliberately <b>minimal and universal — exactly three tools</b>:
-        <code>describe_schema()</code> returns the data map (every queryable relation + columns + join
-        recipes + worked examples), <code>query(sql)</code> runs one sandboxed read-only SELECT over
-        the whole catalog, and <code>agentic_query(question)</code> is an escape hatch that lets an
-        inner agent explore over several rounds. Together <code>query</code> + the schema doc subsume
-        every narrow per-topic tool — an agent can ask "which pandabytes sources are stale?", "chart
-        GA4 pageviews for the last 30 days", or "who were our top authors by pageviews this month?" by
-        composing its own SELECT, no HTTP code and no permission-prompt sprawl.</p>
-      <p>There is <b>one canonical route for every client</b>: the
-        <a href="#connect">remote URL</a> below. Streamable HTTP, nothing to install — the same single
-        URL works in claude.ai, Claude Code, Claude Desktop, Cursor, and any other MCP client.</p>
+  <h1 class="sr-only">pandabytes — MCP quickstart</h1>
+  <main class="wrap doc">
+    <div class="mcp-quick">
+      <div class="section-title">Connect the pandabytes MCP — 3 steps</div>
+      <p class="mcp-lead">Get a <b>read-only</b> Pandabytes connector for Claude in under a minute. One URL,
+        works in claude.ai, Claude Code, Claude Desktop and Cursor. Self-serve for
+        <b>@boredpanda.com</b> addresses — your inbox is the gate, no operator approval.</p>
 
-      <h2 id="connect">Connect (works everywhere)</h2>
-      <p>One remote MCP server, <b>one URL</b>, the <b>same 3 read-only tools</b> in every client. The
-        access token rides in the URL query string (<code>?k=</code>) and is checked at the edge; the
-        hub's own data key stays server-side, so the connector never sees it. Paste this single URL —
-        nothing to install, no <code>uvx</code>:</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>https://pandabytes.restful.zone/mcp?k=&lt;your-token&gt;</code></pre>
-      <p>Replace <code>&lt;your-token&gt;</code> with the token the operator gives you — the full URL,
-        token included, is the one thing you paste. The connector is <b>read-only</b>: no raw SQL, no
-        writes; every call just reads the already-built catalog, so any query volume is safe and
-        quota-free. Need a token? Request one on the <a href="request.html">Get a key</a> page.</p>
+      <!-- STEP 1 — email -->
+      <section class="step is-active" id="step1">
+        <div class="num"><span>1</span></div>
+        <h3>Enter your work email</h3>
+        <p class="hint">We email a one-click confirm link to your <b>@boredpanda.com</b> address.</p>
+        <div class="mcp-field">
+          <input id="email" type="email" placeholder="you@boredpanda.com" autocomplete="email" spellcheck="false" inputmode="email">
+          <button id="getlink" type="button">Get my MCP link</button>
+        </div>
+        <div id="msg1" class="mcp-msg"></div>
+        <p class="domain-note">Only <b>@boredpanda.com</b> emails are accepted here.</p>
+      </section>
 
-      <h3 id="first-calls" style="margin-top:22px">First calls (quickstart)</h3>
-      <p>Once connected, the fastest path is two tools. Call <code>describe_schema()</code>
-        <b>first</b> &mdash; it returns the queryable relations + their real column names and
-        worked examples &mdash; then compose a read-only SELECT and run it with
-        <code>query(sql)</code> (SELECT-only, capped at 1000 rows). Example:</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>describe_schema()
-query("SELECT page_path, title, bp_views FROM v_articles ORDER BY bp_views DESC LIMIT 5")</code></pre>
-      <p class="note" style="font-size:.9em;opacity:.9;border-left:3px solid #c9a227;padding:.5em .8em;background:rgba(201,162,39,.06)"><b>Column-name gotcha.</b>
-        In SQL the article metrics are <code>bp_views</code>, <code>bp_upvotes</code>, and
-        <code>categories</code> (an array) &mdash; <b>not</b> the friendlier <code>pageviews</code> /
-        <code>category</code> you may see in the canned endpoints. Always run
-        <code>describe_schema()</code> first to get the exact column names rather than guessing;
-        a wrong name comes back as an error with a <code>hint</code> you can self-correct on.</p>
+      <!-- STEP 2 — confirm -->
+      <section class="step" id="step2">
+        <div class="num"><span>2</span></div>
+        <h3>Check your email and click Confirm</h3>
+        <p class="hint" id="step2hint">We just sent a confirmation email. Open it and click the big
+          <b>Confirm</b> button — that mints your key and shows your MCP URL.</p>
+        <div class="mcp-resend">Didn't get it? Check spam, or <a id="resend">resend the link</a>.</div>
+      </section>
 
-      <p class="note" style="font-size:.9em;opacity:.85;border-left:3px solid #c9a227;padding:.5em .8em;background:rgba(201,162,39,.06)"><b>Testing the endpoint?</b>
-        This is a <b>Streamable-HTTP</b> MCP server, not a plain JSON-RPC endpoint. A bare
-        <code>POST /mcp?k=&lt;token&gt;</code> with a hand-rolled JSON-RPC body returns <code>[]</code> (empty) —
-        that is expected, not a failure. A real client must do the Streamable-HTTP / SSE session
-        handshake (<code>initialize</code> → session id → tool calls). Use a proper MCP client to connect:
-        Claude Code <code>claude mcp add --transport http</code> (below) or the claude.ai / Claude Desktop
-        <em>Add custom connector</em> dialog — don't <code>curl</code> a raw JSON-RPC POST and conclude it's down.</p>
+      <!-- STEP 3 — paste URL (shown after confirm) -->
+      <section class="step" id="step3">
+        <div class="num"><span>3</span></div>
+        <h3>Paste your MCP URL into Claude</h3>
+        <p class="hint">Your ready-to-paste URL (it carries your read-only key — keep it private):</p>
+        <div class="urlrow">
+          <code id="mcpurl">https://pandabytes.restful.zone/mcp?k=&lt;your key&gt;</code>
+          <button class="btn copybtn" id="copyurl" type="button">copy</button>
+        </div>
+        <a class="gotolink" href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">Open claude.ai connectors &rarr;</a>
+        <ol class="step3-extra">
+          <li>On <a href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">claude.ai/customize/connectors</a>, choose <b>Add custom connector</b>.</li>
+          <li>Name it <b>Pandabytes</b>; paste the URL above as the <b>Remote MCP server URL</b>; leave OAuth Client ID / Secret blank.</li>
+          <li>Save, then ask Claude <i>"which pandabytes sources are stale?"</i></li>
+        </ol>
+      </section>
 
-      <h2 id="clients">Per-client setup</h2>
-      <p>Same URL, four ways to add it. Once added, ask Claude things like
-        <em>"which pandabytes sources are stale?"</em> or <em>"top BoredPanda authors by pageviews this
-        month"</em> and it calls these tools directly.</p>
-      <div class="doc-table-scroll">
-      <table class="mcp-tools">
-        <tr><th>client</th><th>how to add the remote URL</th></tr>
-        <tr>
-          <td><b>claude.ai</b> (web)</td>
-          <td><b>Settings → Connectors → Add custom connector</b>. Name <code>Pandabytes</code>, paste
-            the URL as the <b>Remote MCP server URL</b>, leave <b>OAuth Client ID</b> and
-            <b>Client Secret</b> blank.</td>
-        </tr>
-        <tr>
-          <td><b>Claude Code</b> (CLI)</td>
-          <td>One command — pass the full URL in quotes (verified <code>✔ Connected</code>):
-            <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>claude mcp add --transport http pandabytes \
-  "https://pandabytes.restful.zone/mcp?k=&lt;your-token&gt;"</code></pre>
-            Check it with <code>claude mcp list</code>; remove with
-            <code>claude mcp remove pandabytes</code>.</td>
-        </tr>
-        <tr>
-          <td><b>Claude Desktop</b></td>
-          <td>Add it as a <b>remote connector</b> (Settings → Connectors → Add custom connector), same
-            URL — no <code>uvx</code>, nothing to install.</td>
-        </tr>
-        <tr>
-          <td><b>Cursor / other</b></td>
-          <td>Any MCP-aware client: add an HTTP / remote server pointed at the same URL. The
-            <code>?k=</code> token is the only credential.</td>
-        </tr>
-      </table>
-      </div>
-
-      <details class="local-stdio">
-        <summary>Optional: local stdio (offline / development)</summary>
-        <p>The remote URL above is the recommended path for all clients. This local <code>uvx</code>
-          stdio mode exists only for offline use or developing against the hub directly — most users
-          should ignore it. It runs the same server on your machine over stdio and talks to the
-          <a href="docs.html#rest">REST API</a> with <i>your own</i> data key (not the <code>?k=</code>
-          edge token):</p>
-        <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>uvx mcp-pandabytes</code></pre>
-        <p>Configure it in your MCP client's <code>mcp.json</code>:</p>
-        <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>{
-  "mcpServers": {
-    "pandabytes": {
-      "command": "uvx",
-      "args": ["mcp-pandabytes"],
-      "env": {
-        "PANDABYTES_API_KEY": "YOUR_KEY",
-        "PANDABYTES_API_BASE": "https://pandabytes.restful.zone/v1"
-      }
-    }
-  }
-}</code></pre>
-        <p>Need a key? Request one on the <a href="request.html">Get a key</a> page.</p>
+      <details class="advanced">
+        <summary>Other clients (Claude Code, Desktop, Cursor) &amp; what the connector can do</summary>
+        <p>The same URL works everywhere — Streamable HTTP, nothing to install. Once you have your URL from
+          step&nbsp;3:</p>
+        <p><b>Claude Code (CLI):</b></p>
+        <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>claude mcp add --transport http pandabytes \
+  "https://pandabytes.restful.zone/mcp?k=&lt;your key&gt;"</code></pre>
+        <p><b>Claude Desktop / Cursor:</b> add it as a remote / HTTP MCP connector pointed at the same URL.</p>
+        <p>The connector is <b>read-only</b> with exactly three tools — <code>describe_schema()</code> (the data
+          map, call it first), <code>query(sql)</code> (one sandboxed read-only SELECT over the whole catalog),
+          and <code>agentic_query(question)</code> (multi-step explorer). It never triggers an upstream fetch,
+          so any query volume is safe. Full tool reference + schema is in the
+          <a href="docs.html#rest">API docs</a>.</p>
+        <p style="font-size:13px;color:var(--fg-faint)">Need programmatic REST access instead of MCP? Request a
+          plain API key on the <a href="request.html">Get a key</a> page.</p>
       </details>
-
-      <h2 id="tools">The 3 tools</h2>
-      <p>The surface is <b>minimal and universal by design — exactly three tools</b> (collapsed from a
-        prior set of narrow per-topic tools): <code>query</code> + the schema doc subsume every custom
-        editorial / coverage question, and fewer tools means no permission-prompt sprawl. All three
-        are <b>read-only</b> and return a single JSON object; errors come back as the REST error
-        envelope (<code>{ ok:false, error, code, hint }</code>) so an agent can self-correct on
-        <code>hint</code>. The usual flow is two tools: <code>describe_schema()</code> once, then
-        <code>query(sql)</code> as many times as you like — reach for <code>agentic_query</code> only
-        for genuinely hard, multi-step questions.</p>
-      <div class="doc-table-scroll">
-      <table class="mcp-tools">
-        <tr><th>tool</th><th>what it does</th><th>REST</th></tr>
-        <tr>
-          <td><code>describe_schema()</code></td>
-          <td>The DATA MAP — call it FIRST. Returns the full schema doc for the SQL surface: every queryable relation (the curated spine + rollups <em>and</em> the parquet-backed sources — per-day GA4 / Chartbeat, the raw reddit corpus, the FB ad library) with its grain + key columns, the join recipes that bridge them, the safety/limit contract, and copy-pasteable worked SELECTs.</td>
-          <td><code>GET /v1/query/schema</code></td>
-        </tr>
-        <tr>
-          <td><code>query(sql)</code></td>
-          <td>Run ONE sandboxed read-only SELECT over the whole catalog — the universal data path. Compose your own filters / joins / grouping / window. Result is capped at 1000 rows (<code>truncated:true</code> if more exist).</td>
-          <td><code>POST /v1/query</code></td>
-        </tr>
-        <tr>
-          <td><code>agentic_query(question)</code></td>
-          <td>Escape hatch for HARD / multi-step questions: an inner on-box agent EXPLORES the catalog over several rounds (run SQL → read rows → JOIN → refine) then synthesizes a grounded answer. Slower + costlier than <code>query</code> — prefer <code>query</code> + <code>describe_schema</code> for anything you can express directly.</td>
-          <td><em>none — orchestrates the two above</em></td>
-        </tr>
-      </table>
-      </div>
-
-      <h3 id="tool-describe-schema" style="margin-top:26px"><code>describe_schema()</code></h3>
-      <p>Read this <b>first</b>, and again any time you are unsure which relations or columns exist.
-        It returns <code>{ markdown, limits }</code> — the full schema documentation plus the caps
-        enforced server-side (<code>max_rows</code> 1000, <code>timeout_sec</code> 300,
-        <code>memory</code> a soft limit that spills to NVMe, <code>max_concurrency</code>, and
-        <code>full_catalog: true</code> meaning the WHOLE catalog is queryable, no relation whitelist).</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>describe_schema()</code></pre>
-
-      <h3 id="tool-query" style="margin-top:26px"><code>query(sql)</code></h3>
-      <p>The universal data path: compose one read-only SELECT and run it. <b>The contract</b> (enforced
-        server-side; a violation returns <code>code:"rejected"</code>, never a crash): a single
-        <code>SELECT</code> or <code>WITH … SELECT</code> — no writes / DDL / DML, no
-        <code>SET</code>/<code>PRAGMA</code>/<code>ATTACH</code>/<code>COPY</code>/<code>CALL</code>, no
-        file functions (<code>read_csv</code>/<code>read_parquet</code>/<code>glob</code> — the
-        predefined views read their fixed parquet for you), no second statement. The whole catalog is
-        readable; output is wrapped in <code>LIMIT 1000</code> (<code>truncated:true</code> → aggregate
-        or add your own <code>ORDER BY … LIMIT</code>). 300s wall-clock budget, ~20-way concurrency
-        (a 21st gets <code>code:"busy"</code>). For speed, filter on the partition key <code>dt</code>
-        on the date-partitioned sources. Returns <code>{ columns, rows, row_count, truncated }</code>.</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>query("SELECT page_path, title, bp_views FROM v_articles ORDER BY bp_views DESC LIMIT 5")</code></pre>
-
-      <h3 id="tool-agentic-query" style="margin-top:26px"><code>agentic_query(question)</code></h3>
-      <p>The escape hatch for questions that are awkward to write as a single SELECT (multi-step,
-        comparative, exploratory). An inner on-box <code>claude</code> (Haiku, from the subscription
-        pool — never the paid API) does NL → SQL → EXPLORE → synthesis over up to ~10 rounds, but runs
-        <b>tool-less</b>: it can only emit SQL text, which the server runs through the <em>same</em>
-        guarded <code>query</code> path — so it can never bypass the safety harness or escape the box.
-        It early-exits as soon as the rows suffice, has a hard ~300s budget, and returns
-        <code>{ answer, queries, rounds, elapsed_s, partial, note }</code>. Costs pool tokens per call.</p>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>agentic_query("Which feeder subreddits had the worst coverage drop over the last 30 days, and what changed?")</code></pre>
-
-      <p class="tip">Full field-by-field shapes — including the queryable relations, columns, and join
-        recipes that <code>describe_schema()</code> returns — are in the
-        <a href="docs.html#rest">REST API usage</a> section of the docs (the MCP tools return the same
-        payloads as the REST endpoints listed above).</p>
     </div>
   </main>
 
   <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="request.html">Request a key</a>
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="request.html">Get a key</a>
   </div></footer>
 
   <script src="assets/app.js"></script>
   <script>
-  /* keyless docs chrome, shared with docs.html: hover/focus "#" deep-link anchors on
-     every heading, plus the TOC scroll-spy that marks the section currently in view. */
-  if (typeof PB !== 'undefined' && PB.initHeadingAnchors) PB.initHeadingAnchors();
-  if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
   (function () {
-    const toc = document.querySelector('.doc-toc-nav');
-    if (!toc || !('IntersectionObserver' in window)) return;
-    const links = Array.from(toc.querySelectorAll('a'));
-    const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
-    const heads = links
-      .map(a => document.getElementById(a.getAttribute('href').slice(1)))
-      .filter(Boolean);
-    if (!heads.length) return;
-    const visible = new Set();
-    const mark = () => {
-      let activeId = null, best = Infinity;
-      for (const id of visible) {
-        const top = document.getElementById(id).getBoundingClientRect().top;
-        if (top < best) { best = top; activeId = id; }
+    var emailEl = document.getElementById('email');
+    var getBtn  = document.getElementById('getlink');
+    var msg1    = document.getElementById('msg1');
+    var step1   = document.getElementById('step1');
+    var step2   = document.getElementById('step2');
+    var step3   = document.getElementById('step3');
+    var step2hint = document.getElementById('step2hint');
+    var resendEl  = document.getElementById('resend');
+    var urlCode   = document.getElementById('mcpurl');
+    var copyUrlBtn = document.getElementById('copyurl');
+
+    var BPDOMAIN = '@boredpanda.com';
+    var lastEmail = '';
+
+    function setMsg(el, text, kind) {
+      el.className = 'mcp-msg show ' + (kind || '');
+      el.textContent = text;
+    }
+    function clearMsg(el) { el.className = 'mcp-msg'; el.textContent = ''; }
+
+    function showStep3(url) {
+      urlCode.textContent = url;
+      step1.classList.remove('is-active'); step1.classList.add('is-done');
+      step2.classList.remove('is-active'); step2.classList.add('is-done');
+      step3.classList.add('is-active');
+      step3.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function validBP(v) {
+      v = (v || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return null;
+      if (v.slice(-BPDOMAIN.length) !== BPDOMAIN) return null;
+      return v;
+    }
+
+    async function requestLink() {
+      clearMsg(msg1);
+      var raw = emailEl.value;
+      var email = validBP(raw);
+      if (!email) {
+        setMsg(msg1, 'Please enter a valid ' + BPDOMAIN + ' email address.', 'err');
+        return;
       }
-      if (!activeId) return;
-      links.forEach(a => a.classList.remove('active'));
-      const a = byId.get(activeId);
-      if (a) a.classList.add('active');
-    };
-    const obs = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) visible.add(e.target.id);
-        else visible.delete(e.target.id);
+      lastEmail = email;
+      getBtn.disabled = true;
+      setMsg(msg1, 'Sending your confirmation link…', '');
+      try {
+        var r = await fetch('/v1/mcp/request', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        var j = await r.json().catch(function () { return null; });
+        var d = (j && j.data) || {};
+        if (r.ok && j && j.ok !== false) {
+          if (d.status === 'already_active' && d.mcp_url) {
+            // Idempotent: this address already has a key — jump straight to step 3.
+            setMsg(msg1, '✓ This address already has an active key.', 'ok');
+            showStep3(d.mcp_url);
+            return;
+          }
+          // Pending — advance to step 2.
+          setMsg(msg1, '✓ Link sent to ' + email + '.', 'ok');
+          step1.classList.remove('is-active'); step1.classList.add('is-done');
+          step2.classList.add('is-active');
+          step2hint.innerHTML = 'We sent a confirmation email to <b>' + PB.esc(email) +
+            '</b>. Open it and click the big <b>Confirm</b> button — that mints your key and shows your MCP URL.';
+          step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          var em = (j && (j.error || j.hint)) || ('HTTP ' + r.status);
+          setMsg(msg1, em, 'err');
+        }
+      } catch (e) {
+        setMsg(msg1, 'Could not reach the server. Check your connection and try again.', 'err');
+      } finally {
+        getBtn.disabled = false;
       }
-      mark();
-    }, { rootMargin: '-90px 0px -65% 0px', threshold: 0 });
-    heads.forEach(h => obs.observe(h));
+    }
+
+    getBtn.addEventListener('click', requestLink);
+    emailEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') requestLink(); });
+    resendEl.addEventListener('click', function () {
+      if (lastEmail) { emailEl.value = lastEmail; }
+      requestLink();
+    });
+
+    copyUrlBtn.addEventListener('click', function () {
+      var txt = urlCode.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(function () {
+          var o = copyUrlBtn.textContent; copyUrlBtn.textContent = 'copied';
+          setTimeout(function () { copyUrlBtn.textContent = o; }, 1300);
+        });
+      }
+    });
   })();
   </script>
 </body>
