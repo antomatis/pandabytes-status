@@ -22,8 +22,7 @@
         <a href="index.html">Dashboard</a>
         <a href="pivots.html">Pivots</a>
         <a href="docs.html" class="active">Docs &amp; API</a>
-        <a href="mcp.html">MCP</a>
-        <a href="request.html">Get a key</a>
+        <a href="mcp.html">Get a key / MCP</a>
       </nav>
     </div>
   </header>
@@ -79,23 +78,32 @@
       <div id="catalog-grid" class="catalog-grid"></div>
 
       <h2 id="getkey">How to get an API key</h2>
-      <p>The API uses a single <b>read-only</b> key, passed as the <code>X-API-Key</code> header (or the
-        <code>?key=</code> query param — the query param wins if both are present). <code>GET /v1</code>
-        and <code>GET /v1/health</code> are public so an agent can bootstrap before it has a key.</p>
+      <p>There is <b>one</b> way to get a key, and it is fully self-serve. Get your key via the
+        <a href="mcp.html">3-step flow on the Get a key / MCP page</a> — the <b>SAME</b> key works as
+        <code>X-API-Key</code> / <code>?key=</code> for the REST API <b>and</b> as <code>?k=</code> for
+        the MCP connector. It is a single <b>read-only</b> key (the <code>?key=</code> query param wins if
+        both header and query are present). Self-serve is gated to <b>@boredpanda.com</b> addresses —
+        your inbox is the gate, no operator approval.</p>
+      <p><code>GET /v1</code> and <code>GET /v1/health</code> stay <b>public</b> (no key) so an agent can
+        bootstrap and discover the surface before it has a key.</p>
       <ol>
-        <li>Request a key on the <a href="request.html">Get a key</a> page, or POST your email directly:</li>
+        <li>Open the <a href="mcp.html">Get a key / MCP</a> page, enter your <b>@boredpanda.com</b> email,
+          and click <b>Get my key</b> — or POST it directly:</li>
       </ol>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://pandabytes.restful.zone/v1/keys/request" \
+      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://pandabytes.restful.zone/v1/mcp/request" \
      -H "Content-Type: application/json" \
-     -d '{"email":"you@company.com"}'</code></pre>
-      <pre><code>{ "ok": true, "data": { "status": "pending", "email": "you@company.com",
-  "request_id": "req_7Fa1c9d2",
-  "message": "approval link emailed to the operator; you'll receive your key once approved" } }</code></pre>
+     -d '{"email":"you@boredpanda.com"}'</code></pre>
+      <pre><code>{ "ok": true, "data": { "status": "pending", "email": "you@boredpanda.com",
+  "message": "check your inbox — click the Confirm button in the email we just sent" } }</code></pre>
       <ol start="2">
-        <li>The operator approves by email; your key is <b>emailed to you</b> (never returned in a body).</li>
-        <li>Pass it as the <code>X-API-Key</code> header (or <code>?key=</code>) on the requests below,
-          or in your MCP client config. The <a href="index.html">dashboard</a> itself stays keyless.</li>
+        <li>Click the <b>Confirm</b> button in the email. That mints your key and drops you on step&nbsp;3
+          with your ready-to-paste URL.</li>
+        <li>The part after <code>k=</code> in that URL <b>is your key</b>. Pass it as the
+          <code>X-API-Key</code> header (or <code>?key=</code>) on the REST calls below, or paste the whole
+          URL into your MCP client. The <a href="index.html">dashboard</a> itself stays keyless.</li>
       </ol>
+      <p class="tip">If this address already has an active key, step&nbsp;1 skips the email and jumps you
+        straight to your URL (idempotent — one key per address).</p>
 
       <h2 id="rest">REST API usage</h2>
       <p>Base URL: <code>https://pandabytes.restful.zone/v1</code>. Every response uses the same envelope:
@@ -277,7 +285,7 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
 
       <h3 id="error-envelope">Error envelope</h3>
       <pre><code>{ "ok": false, "error": "missing or invalid API key", "code": "unauthorized",
-  "hint": "pass ?key=YOUR_KEY or the X-API-Key header; request one via POST /v1/keys/request" }</code></pre>
+  "hint": "pass ?key=YOUR_KEY or the X-API-Key header; self-serve a key at https://pandabytes.restful.zone/mcp.html" }</code></pre>
       <p>Stable <code>code</code> values: <code>unauthorized</code>, <code>source_not_found</code>,
         <code>bad_request</code>, <code>invalid_param</code>, <code>db_unavailable</code>,
         <code>token_spent</code>, <code>rate_limited</code>, <code>internal</code>.</p>
@@ -289,7 +297,10 @@ curl "https://pandabytes.restful.zone/v1/sources?kind=metric&status=FRESH&key=YO
       <h2 id="quickstart">Agent quick-start (3 calls)</h2>
       <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code># 1) discover the surface (no key)
 curl https://pandabytes.restful.zone/v1
-# 2) request a key, get it approved by email, then:
+# 2) self-serve a key (the SAME key works for REST + MCP):
+#    open https://pandabytes.restful.zone/mcp.html, confirm via the emailed link,
+#    then copy the part after k= in your URL. Or POST your @boredpanda.com email:
+#    curl -X POST https://pandabytes.restful.zone/v1/mcp/request -d '{"email":"you@boredpanda.com"}'
 KEY=YOUR_KEY
 # 3) read the board, drill in, chart it
 curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/sources"
@@ -306,7 +317,7 @@ curl -H "X-API-Key: $KEY" "https://pandabytes.restful.zone/v1/articles?path=/air
   </main>
 
   <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="mcp.html">MCP</a> · <a href="request.html">Request a key</a>
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="mcp.html">Get a key / MCP</a>
   </div></footer>
 
   <script src="assets/app.js"></script>

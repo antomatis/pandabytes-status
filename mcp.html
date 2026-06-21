@@ -78,8 +78,7 @@
         <a href="index.html">Dashboard</a>
         <a href="pivots.html">Pivots</a>
         <a href="docs.html">Docs &amp; API</a>
-        <a href="mcp.html" class="active">MCP</a>
-        <a href="request.html">Get a key</a>
+        <a href="mcp.html" class="active">Get a key / MCP</a>
       </nav>
     </div>
   </header>
@@ -87,10 +86,11 @@
   <h1 class="sr-only">pandabytes — MCP quickstart</h1>
   <main class="wrap doc">
     <div class="mcp-quick">
-      <div class="section-title">Connect the pandabytes MCP — 3 steps</div>
-      <p class="mcp-lead">Get a <b>read-only</b> Pandabytes connector for Claude in under a minute. One URL,
-        works in claude.ai, Claude Code, Claude Desktop and Cursor. Self-serve for
-        <b>@boredpanda.com</b> addresses — your inbox is the gate, no operator approval.</p>
+      <div class="section-title">Get your pandabytes key — 3 steps</div>
+      <p class="mcp-lead">One <b>read-only</b> key in under a minute. The SAME key powers the
+        <b>MCP connector</b> (paste one URL into claude.ai, Claude Code, Desktop or Cursor)
+        <b>and</b> the <b>REST API</b> (send it as <code>X-API-Key</code> / <code>?key=</code>).
+        Self-serve for <b>@boredpanda.com</b> addresses — your inbox is the gate, no operator approval.</p>
 
       <!-- STEP 1 — email -->
       <section class="step is-active" id="step1">
@@ -117,12 +117,15 @@
       <!-- STEP 3 — paste URL (shown after confirm) -->
       <section class="step" id="step3">
         <div class="num"><span>3</span></div>
-        <h3>Paste your MCP URL into Claude</h3>
-        <p class="hint">Your ready-to-paste URL (it carries your read-only key — keep it private):</p>
+        <h3>Paste your URL into Claude</h3>
+        <p class="hint">Your ready-to-paste MCP URL (it carries your read-only key — keep it private):</p>
         <div class="urlrow">
           <code id="mcpurl">https://pandabytes.restful.zone/mcp?k=&lt;your key&gt;</code>
           <button class="btn copybtn" id="copyurl" type="button">copy</button>
         </div>
+        <p class="domain-note" style="margin-top:10px"><b>This same key is your REST API key.</b>
+          The part after <code>k=</code> is your key — send it as the <code>X-API-Key</code> header
+          (or <code>?key=</code>) to call the <a href="docs.html#rest">REST API</a> directly.</p>
         <a class="gotolink" href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">Open claude.ai connectors &rarr;</a>
         <ol class="step3-extra">
           <li>On <a href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">claude.ai/customize/connectors</a>, choose <b>Add custom connector</b>.</li>
@@ -144,14 +147,15 @@
           and <code>agentic_query(question)</code> (multi-step explorer). It never triggers an upstream fetch,
           so any query volume is safe. Full tool reference + schema is in the
           <a href="docs.html#rest">API docs</a>.</p>
-        <p style="font-size:13px;color:var(--fg-faint)">Need programmatic REST access instead of MCP? Request a
-          plain API key on the <a href="request.html">Get a key</a> page.</p>
+        <p style="font-size:13px;color:var(--fg-faint)">Just want REST, not MCP? You already have it — the
+          key inside your step&nbsp;3 URL (after <code>k=</code>) <b>is</b> your REST API key. Send it as
+          <code>X-API-Key</code> or <code>?key=</code>; see the <a href="docs.html#getkey">API docs</a>.</p>
       </details>
     </div>
   </main>
 
   <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="request.html">Get a key</a>
+    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="mcp.html">Get a key / MCP</a>
   </div></footer>
 
   <script src="assets/app.js"></script>
@@ -251,6 +255,52 @@
         });
       }
     });
+
+    // ---- confirm landing: the email's Confirm link 302s us here as
+    //   /mcp.html?confirm=<single-use display token>.
+    // Exchange it ONCE for the ready-to-paste URL and jump straight to Step 3.
+    // The raw key never travels in the URL — only this opaque, short-lived token.
+    function getConfirmToken() {
+      var m = /[?&]confirm=([a-f0-9]{64})\b/i.exec(location.search);
+      return m ? m[1] : null;
+    }
+    function stripConfirmFromUrl() {
+      // Remove ?confirm=… so a refresh doesn't re-call the (now-dead) token.
+      try {
+        var u = new URL(location.href);
+        u.searchParams.delete('confirm');
+        history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+      } catch (e) { /* old browser — leave as-is */ }
+    }
+    async function handleConfirmLanding() {
+      var tok = getConfirmToken();
+      if (!tok) return;
+      // Move the user's eye to step 2/3 area while we fetch.
+      step1.classList.remove('is-active'); step1.classList.add('is-done');
+      step2.classList.add('is-done');
+      setMsg(msg1, 'Confirmed — fetching your URL…', 'ok');
+      try {
+        var r = await fetch('/v1/mcp/landing?confirm=' + encodeURIComponent(tok), {
+          headers: { 'Accept': 'application/json' }, cache: 'no-store'
+        });
+        var j = await r.json().catch(function () { return null; });
+        var d = (j && j.data) || {};
+        if (r.ok && j && j.ok !== false && d.mcp_url) {
+          stripConfirmFromUrl();
+          showStep3(d.mcp_url);
+        } else {
+          var em = (j && (j.hint || j.error)) || ('HTTP ' + r.status);
+          setMsg(msg1, em, 'err');
+          step1.classList.add('is-active'); step1.classList.remove('is-done');
+          step2.classList.remove('is-done');
+        }
+      } catch (e) {
+        setMsg(msg1, 'Could not load your URL. Re-enter your email above to get it again.', 'err');
+        step1.classList.add('is-active'); step1.classList.remove('is-done');
+        step2.classList.remove('is-done');
+      }
+    }
+    handleConfirmLanding();
   })();
   </script>
 </body>

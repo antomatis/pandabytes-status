@@ -3,101 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pandabytes — request an API key</title>
-  <meta name="description" content="Request a read-only API key for the pandabytes data hub. Operator-approved by email.">
-  <link rel="icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/pb_logo_32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/pb_logo_16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/pb_logo_180.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&display=swap">
-  <link rel="stylesheet" href="assets/style.css">
+  <title>pandabytes — Get a key</title>
+  <!-- The standalone "Request a key" page (operator-approval flow) is retired. Getting a key
+       is now ONE self-serve 3-step flow on the MCP page, and the SAME key works for both the
+       REST API (X-API-Key / ?key=) and the MCP connector (?k=). This page now permanently
+       forwards to mcp.html so old bookmarks/links still land on the unified flow. The live
+       nginx deploy is additive (never deletes), so this redirect — not a file removal — is
+       what retires the page (same pattern as the former ideas.html -> pivots.html redirect). -->
+  <link rel="canonical" href="/mcp.html">
+  <meta http-equiv="refresh" content="0; url=/mcp.html">
+  <script>location.replace('/mcp.html' + location.search + location.hash);</script>
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <div class="brand"><img class="brand-logo" src="/assets/pb_logo_96.png" alt="pandabytes" width="38" height="38"> pandabytes <small>status</small></div>
-      <nav class="top">
-        <a href="index.html">Dashboard</a>
-        <a href="pivots.html">Pivots</a>
-        <a href="docs.html">Docs &amp; API</a>
-        <a href="mcp.html">MCP</a>
-        <a href="request.html" class="active">Get a key</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <h1 class="sr-only">pandabytes — request an API key</h1>
-    <div class="section-title">Request a read-only API key</div>
-    <p class="tip">
-      The pandabytes API uses a single <b>read-only</b> key, passed as the <code>X-API-Key</code> header
-      (or <code>?key=</code> query param). Requests are <b>operator-approved by email</b>: submit your
-      address below, the operator gets an approval link, and the key is emailed to you once approved
-      (it is never returned in a response body).
-    </p>
-
-    <div class="formcard">
-      <h3>POST /v1/keys/request</h3>
-      <div class="field">
-        <input id="email" type="email" placeholder="you@company.com" autocomplete="email" spellcheck="false">
-        <button id="submit">Request key</button>
-      </div>
-      <div id="result" class="result"></div>
-      <p class="tip" style="margin-bottom:0">
-        Endpoint: <code>POST https://pandabytes.restful.zone/v1/keys/request</code> with JSON body
-        <code>{"email":"…"}</code>. Returns <code>202 Accepted</code> with a <code>request_id</code>.
-      </p>
-    </div>
-
-    <div class="formcard" style="margin-top:18px">
-      <h3>Prefer curl?</h3>
-      <pre><button class="btn copybtn" onclick="PB.copyToClipboard(this)">copy</button><code>curl -X POST "https://pandabytes.restful.zone/v1/keys/request" \
-     -H "Content-Type: application/json" \
-     -d '{"email":"you@company.com"}'</code></pre>
-      <p class="tip" style="margin-bottom:0">Once approved &amp; emailed, save the key on the
-        <a href="index.html">dashboard</a> to live-refresh, or read the <a href="docs.html">API docs</a>.</p>
-    </div>
-  </main>
-
-  <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs</a>
-  </div></footer>
-
-  <script src="assets/app.js"></script>
-  <script>
-  document.getElementById('submit').onclick = async () => {
-    const email = document.getElementById('email').value.trim();
-    const res = document.getElementById('result');
-    const btn = document.getElementById('submit');
-    res.className = 'result show'; res.textContent = '';
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      res.classList.add('err'); res.textContent = 'Please enter a valid email address.'; return;
-    }
-    btn.disabled = true; res.textContent = 'Submitting request…';
-    try {
-      const r = await fetch(PB.API_BASE + '/keys/request', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const j = await r.json().catch(() => null);
-      if (r.ok && j && j.ok !== false) {
-        res.classList.remove('err'); res.classList.add('ok');
-        const d = (j && j.data) || {};
-        res.innerHTML = '✓ Request received' + (d.request_id ? ' (<code>' + PB.esc(d.request_id) + '</code>)' : '') +
-          '.<br>' + PB.esc(d.message || 'An approval link was emailed to the operator; you will receive your key once approved.');
-      } else {
-        res.classList.remove('ok'); res.classList.add('err');
-        const msg = (j && (j.error || j.hint)) || ('HTTP ' + r.status);
-        res.textContent = 'Request failed: ' + msg;
-      }
-    } catch (e) {
-      res.classList.remove('ok'); res.classList.add('err');
-      res.innerHTML = 'Could not reach the API (network/CORS). Submit the request with the curl command above instead.';
-    } finally { btn.disabled = false; }
-  };
-  document.getElementById('email').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('submit').click(); });
-  </script>
+  <p>Getting a key moved to the <a href="/mcp.html">Get a key / MCP</a> page — one flow, one key for both the REST API and MCP.</p>
 </body>
 </html>
