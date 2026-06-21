@@ -17,13 +17,14 @@
 <body>
   <header class="site">
     <div class="wrap">
-      <div class="brand"><img class="brand-logo" src="/assets/pb_logo_32.png" alt="pandabytes" width="30" height="30"> pandabytes <small>status</small></div>
+      <div class="brand"><img class="brand-logo" src="/assets/pb_logo_96.png" alt="pandabytes" width="38" height="38"> pandabytes <small>status</small></div>
       <div id="hub-pulse" class="hub-pulse is-loading" role="status" aria-live="polite" aria-label="Hub health summary" hidden></div>
       <nav class="top">
         <a href="index.html" class="active">Dashboard</a>
-        <a href="ideas.html">Ideas</a>
+        <a href="pivots.html">Pivots</a>
         <a href="docs.html">Docs &amp; API</a>
         <a href="mcp.html">MCP</a>
+        <a href="request.html">Get a key</a>
       </nav>
     </div>
   </header>
@@ -31,23 +32,17 @@
   <main class="wrap">
     <h1 class="sr-only">pandabytes status dashboard</h1>
 
-    <!-- Editorial DECISION surfaces (Cover now · Movers today · Lopsided winners) now live on
-         the dedicated Ideas page. This dashboard is the system-health / observability read:
-         hub pulse + freshness, the source board, editorial leaders, and usage. The Ideas page
-         reuses the SAME live snapshot and the SAME renderers from dashboard.js. -->
+    <!-- Editorial DECISION surfaces (Cover now · Movers today · Lopsided winners · Editorial
+         leaders) now ALL live on the dedicated Pivots page. This dashboard is the
+         system-health / observability read: hub pulse + freshness, the source board, and
+         usage. The Pivots page reuses the SAME live snapshot and the SAME renderers from
+         dashboard.js. -->
 
     <div class="section-title">Sources
       <span class="muted">— grouped by source · click a group to collapse · click a facet for its 30-day coverage chart</span>
     </div>
     <div id="dash-loading" class="loading">Loading snapshot…</div>
     <div id="board" class="board"></div>
-
-    <section id="leaders-section" hidden>
-      <div class="section-title" style="margin-top:32px">Editorial leaders
-        <span class="muted" id="leaders-window">— top authors &amp; categories · by pageviews</span>
-      </div>
-      <div id="leaders-panel" class="leaders-panel"></div>
-    </section>
 
     <div class="section-title" style="margin-top:32px">Usage
       <span class="muted">— API + MCP request counts · aggregated, no raw data</span>
@@ -57,8 +52,9 @@
     <p class="tip" style="margin-top:14px">
       Live status of the pandabytes data hub, served same-origin from
       <code>/snapshot.json</code> and refreshed automatically every few minutes — no key needed.
-      Programmatic access (for agents/MCP) is via the key-gated REST API; see the
-      <a href="docs.html">Docs &amp; API</a> page.
+      Editorial decision surfaces (what to cover, what's moving, replicable wins, leaders) live
+      on the <a href="pivots.html">Pivots</a> page. Programmatic access (for agents/MCP) is via
+      the key-gated REST API; see the <a href="docs.html">Docs &amp; API</a> page.
     </p>
   </main>
 

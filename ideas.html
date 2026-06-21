@@ -3,96 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pandabytes — Ideas</title>
-  <meta name="description" content="Editorial decision surface for the pandabytes data hub: today's actionable coverage opportunities (Cover now), already-published articles surging (Movers today), and lopsided cross-platform winners to replicate. Live, key-free, from the same same-origin snapshot.">
-  <link rel="icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/pb_logo_32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/pb_logo_16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/pb_logo_180.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&display=swap">
-  <link rel="stylesheet" href="assets/style.css">
+  <title>pandabytes — Pivots</title>
+  <!-- The former "Ideas" tab was merged into a single "Pivots" tab (Cover now · Movers today ·
+       Lopsided winners · Editorial leaders). This page now permanently forwards to pivots.html
+       so old bookmarks/links still land on the merged surface. The live nginx deploy is additive
+       (never deletes), so this redirect — not a file removal — is what retires the Ideas tab. -->
+  <link rel="canonical" href="/pivots.html">
+  <meta http-equiv="refresh" content="0; url=/pivots.html">
+  <script>location.replace('/pivots.html' + location.search + location.hash);</script>
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <div class="brand"><img class="brand-logo" src="/assets/pb_logo_32.png" alt="pandabytes" width="30" height="30"> pandabytes <small>status</small></div>
-      <!-- freshness "updated N ago" stamp: reuses the .hub-pulse pill chrome but carries ONLY
-           the snapshot's as-of time (no health summary — that lives on the Dashboard). Filled
-           + kept ticking on a 30s client interval by renderFreshness() in dashboard.js. -->
-      <div id="ideas-fresh" class="hub-pulse" role="status" aria-live="polite" aria-label="Snapshot freshness" hidden>
-        <span class="pulse-fresh" id="pulse-fresh"></span>
-      </div>
-      <nav class="top">
-        <a href="index.html">Dashboard</a>
-        <a href="ideas.html" class="active">Ideas</a>
-        <a href="docs.html">Docs &amp; API</a>
-        <a href="mcp.html">MCP</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <h1 class="sr-only">pandabytes — Ideas</h1>
-
-    <p class="tip" style="margin:6px 0 4px">
-      The morning-editor read: what to <b>cover now</b>, what's <b>moving</b>, and which wins to
-      <b>replicate</b> — decision surfaces over the live hub, served same-origin from
-      <code>/snapshot.json</code> and refreshed automatically every few minutes (no key needed).
-      System health, source freshness, and editorial leaders live on the
-      <a href="index.html">Dashboard</a>.
-    </p>
-
-    <!-- "Cover now": the morning-editor read — today's specific, actionable coverage
-         opportunities (fresh on-brand viral posts BP hasn't covered). Populated by
-         renderCoverNow() from snapshot.cover_now; self-hides when the block is absent/empty
-         (older snapshot / no opportunities). -->
-    <section id="cover-now-section" hidden>
-      <div class="section-title">Cover now
-        <span class="muted" id="cover-now-sub">— fresh on-brand viral posts not yet covered · ranked by upvote velocity</span>
-      </div>
-      <div id="cover-now-panel" class="cover-now-panel"></div>
-    </section>
-
-    <!-- "Movers today": articles BoredPanda ALREADY published that suddenly took off. Each row
-         = title + ▲ pageviews on the latest COMPLETE GA4 day + the jump vs that article's own
-         7-day daily average ("↑3.2× vs 7d avg"). Populated by renderMovers() from
-         snapshot.movers; self-hides when the block is absent/empty or stale. -->
-    <section id="movers-section" hidden>
-      <div class="section-title">Movers today
-        <span class="muted" id="movers-sub">— already-published articles surging vs their own 7-day average</span>
-      </div>
-      <div id="movers-panel" class="movers-panel"></div>
-    </section>
-
-    <!-- "Lopsided winners": the replicable-win read — BoredPanda articles that crushed it on ONE
-         platform but are absent on others, so the editor can REPLICATE the win on a second
-         channel (SEO refresh, social re-promo, Reddit syndication). Same view the Slack daily
-         digest reads (single source of truth). Populated by renderLopsided() from
-         snapshot.lopsided_winners; self-hides when the block is absent/empty or stale. -->
-    <section id="lopsided-section" hidden>
-      <div class="section-title">Lopsided winners
-        <span class="muted" id="lopsided-sub">— big on one platform, absent on others · push the win to a 2nd channel</span>
-      </div>
-      <div id="lopsided-panel" class="lopsided-panel"></div>
-    </section>
-
-    <div id="ideas-loading" class="loading">Loading snapshot…</div>
-
-    <p class="tip" style="margin-top:14px">
-      These three reads come from the same live <code>/snapshot.json</code> the
-      <a href="index.html">Dashboard</a> uses — no key, no extra request. Each section self-hides
-      when there's nothing to surface today. Programmatic access (for agents/MCP) is via the
-      key-gated REST API; see the <a href="docs.html">Docs &amp; API</a> page.
-    </p>
-  </main>
-
-  <footer class="site"><div class="wrap">
-    pandabytes — read-only data-hub status. · <a href="index.html">Dashboard</a> · <a href="docs.html">Docs &amp; API</a> · <a href="mcp.html">MCP</a> · <a href="request.html">Request a key</a>
-  </div></footer>
-
-  <script src="assets/app.js"></script>
-  <script src="assets/dashboard.js"></script>
+  <p>This page moved to <a href="/pivots.html">Pivots</a>.</p>
 </body>
 </html>

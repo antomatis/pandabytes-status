@@ -99,9 +99,10 @@ header.site .wrap { padding-top: 14px; padding-bottom: 14px; display: flex;
 /* BoredPanda-style serif wordmark */
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 21px;
   font-family: var(--serif); color: var(--fg-strong); letter-spacing: -.01em; }
-/* Brand logo: flat minimalist panda + server rack, small icon left of the wordmark.
-   30px sits balanced against the 21px serif; rounded to echo the logo's own corner. */
-.brand-logo { width: 30px; height: 30px; flex: none; border-radius: 7px; display: block; }
+/* Brand logo: clean light-blue rounded-square app icon (server rack centered, wordmark band
+   cropped out) regenerated from assets/pb_logo.png. 38px sits balanced against the 21px serif;
+   the source PNG already carries rounded corners, the border-radius just echoes them. */
+.brand-logo { width: 38px; height: 38px; flex: none; border-radius: 9px; display: block; }
 /* Legacy accent dot — retained but unused now the logo image fills the slot. */
 .brand .dot { width: 16px; height: 16px; border-radius: 5px;
   background: linear-gradient(150deg, var(--accent) 0%, var(--accent-deep) 100%);
