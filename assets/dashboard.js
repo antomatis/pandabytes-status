@@ -159,10 +159,22 @@ function facetRow(s) {
   const plannedCap = (planned && planned.progress && !split)
     ? `<span class="arch-cap" title="catalog status: PLANNED — deliberately ramping">${PB.esc(planned.progress)} built so far</span>`
     : '';
+  // On-brand coverage-rate caption for the Reddit→BP citation bridge: the headline is the
+  // all-time count of cited Reddit posts; THIS quiet line is the actionable coverage signal —
+  // what fraction of viral on-brand Reddit BoredPanda has already cited (the rest is the
+  // standing coverage gap). It's the SAME data (coverage_opps_mat) behind Cover now's
+  // "% covered", surfaced here so the bridge's coverage provenance is legible on the grid.
+  // Reuses the .arch-cap quiet style; the full provenance (counts + "fresh as of") rides the
+  // title tooltip + coverage_footer.
+  const cw = s.counts || {};
+  const coverageCap = (cw.onbrand_pct_covered != null)
+    ? `<span class="arch-cap cite-cap" title="${PB.esc(s.coverage_footer || 'on-brand Reddit coverage rate — the provenance behind Cover now’s “% covered”')}">`
+      + `${PB.esc(String(cw.onbrand_pct_covered))}% of viral on-brand Reddit cited</span>`
+    : '';
   const metricLbl = split
     ? `<span class="mlbl"><span class="arch">archive</span> · ${PB.esc(s.key_metric_name || '')}</span>`
       + `<span class="arch-cap" title="historical archive total — the chart below is the separate live daily feed">total through pre-live archive</span>`
-    : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>${plannedCap}`;
+    : `<span class="mlbl">${PB.esc(s.key_metric_name || '')}</span>${plannedCap}${coverageCap}`;
 
   // a deliberately-paused source shows an amber PAUSED badge IN PLACE OF the raw status
   // (so a chosen hold never reads as a broken stall); its tooltip carries the reason and
@@ -834,6 +846,12 @@ function cwRestoreApostrophes(t) {
 }
 // lightweight Title Case: capitalise each word's first letter, but keep short function words
 // (a/an/the/of/and/…) lowercase UNLESS they lead the title. Apostrophes/hyphens preserved.
+// Known acronyms a slug flattens to lowercase ("ufc" -> "UFC") are restored to ALL-CAPS so a
+// slug-derived headline doesn't read "Ufc"/"Nfl"/"Diy"; the match is on the token's alpha core
+// so surrounding punctuation ("ufc:" -> "UFC:") and hyphenated leads ("ai-powered" -> "AI-powered")
+// survive. Acronyms take precedence over the small-word lowercasing (none overlap today anyway).
+const CW_ACRONYMS = new Set(['ufc','nfl','nba','nhl','mlb','ceo','cfo','usa','uk','eu','ai',
+  'nasa','fbi','cia','ufo','diy']);
 function cwTitleCase(t) {
   const small = new Set(['a','an','and','as','at','but','by','for','from','in','into','nor',
     'of','on','onto','or','per','the','to','vs','via','with']);
@@ -844,6 +862,17 @@ function cwTitleCase(t) {
     const isFirst = wi === 0;
     wi++;
     const lower = tok.toLowerCase();
+    // Known acronym anywhere in the token? Upper-case the matching alpha run(s), leaving
+    // punctuation and any hyphen-joined remainder intact: "ufc" -> "UFC", "ufc:" -> "UFC:",
+    // "ai-powered" -> "AI-powered" (only the "ai" segment), while non-acronym runs keep the
+    // normal capitalise-first-letter. Checked first so it wins over both the small-word rule
+    // and the plain title-case path. A non-acronym word like "aimee" is one run ("aimee"),
+    // not the acronym "ai", so it is never mis-matched.
+    const runs = lower.match(/[a-z]+/g) || [];
+    if (runs.some(r => CW_ACRONYMS.has(r))) {
+      return lower.replace(/[a-z]+/g, run => CW_ACRONYMS.has(run) ? run.toUpperCase()
+        : run.replace(/^[a-z]/, c => c.toUpperCase()));
+    }
     if (!isFirst && small.has(lower)) return lower;
     // capitalise the first alpha char (skips a leading quote/paren); leave the rest as-is
     // so an existing ALLCAPS acronym from the slug isn't relevant (slugs are all-lower anyway).

@@ -318,6 +318,10 @@ button:disabled { opacity: .5; cursor: default; }
 .f-metric .mlbl .arch { color: #0f7d78; font-weight: 700; }
 .f-metric .arch-cap { display: block; font-size: 10px; line-height: 1.25; color: var(--fg-quiet);
   font-weight: 500; margin-top: 1px; }
+/* same-week cite-rate caption on the Reddit→BP citation bridge tile: a quiet coverage stat
+   (the provenance behind Cover now's "% covered"), tinted with the derived-source teal so it
+   reads as an actionable coverage signal rather than just another grey footnote. */
+.f-metric .arch-cap.cite-cap { color: #0f7d78; font-weight: 600; cursor: help; }
 .f-badge { text-align: left; }
 .f-spark { min-height: 32px; }
 .f-spark .synced { font-size: 12px; color: var(--fg-faint); text-align: right; margin-top: 2px; }
