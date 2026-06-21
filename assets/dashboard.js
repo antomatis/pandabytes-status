@@ -264,6 +264,7 @@ function groupCard(group, facets) {
 
 function renderBoard(snap) {
   const board = document.getElementById('board');
+  if (!board) return;   // guard: ideas.html has no source board — no-op there (no console error)
   const sources = snap.sources || [];
   const groups = (snap.groups && snap.groups.length)
     ? snap.groups
@@ -809,9 +810,16 @@ let _freshGenAt = null;            // generated_at of the current snapshot
 function paintFreshness() {
   const el = document.getElementById('pulse-fresh');
   if (!el) return;
-  if (!_freshGenAt) { el.textContent = ''; el.hidden = true; return; }
+  // On ideas.html the stamp lives in a STANDALONE pill (#ideas-fresh) with no health
+  // verdict — so when there's no freshness to show, hide the whole pill, not just the
+  // inner span (an empty bordered pill would otherwise show). Harmless on index (no such
+  // wrapper; the pulse chip always has its verdict content).
+  const standalone = document.getElementById('ideas-fresh');
+  const hideAll = () => { el.textContent = ''; el.hidden = true; if (standalone) standalone.hidden = true; };
+  if (!_freshGenAt) { hideAll(); return; }
   const a = PB.snapshotAge(_freshGenAt);
-  if (a.minutes == null) { el.textContent = ''; el.hidden = true; return; }
+  if (a.minutes == null) { hideAll(); return; }
+  if (standalone) standalone.hidden = false;
   el.hidden = false;
   el.classList.toggle('is-stale', !!a.stale);
   el.title = 'Snapshot generated ' + a.exact
@@ -831,23 +839,34 @@ function renderFreshness(snap) {
 
 function renderAll(snap) {
   SNAP = snap;
-  const loading = document.getElementById('dash-loading');
-  if (loading) loading.style.display = 'none';
+  // hide whichever "Loading snapshot…" placeholder this page carries (index: #dash-loading;
+  // ideas: #ideas-loading). Both are guarded so the shared renderer no-ops on the page lacking
+  // the other's element.
+  ['dash-loading', 'ideas-loading'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
   applyDefaultCollapse(snap);
-  renderPulse(snap);
-  renderCoverNow(snap);   // morning-editor "what to cover now" — above the source board
+  renderPulse(snap);      // full health summary — only renders where #hub-pulse exists (index)
+  // freshness "updated N ago" stamp: renderPulse also calls this, but on a page WITHOUT
+  // #hub-pulse (ideas.html) renderPulse early-returns, so call it directly here too. It targets
+  // #pulse-fresh by id (idempotent; the 30s ticker is guarded against double-arming).
+  renderFreshness(snap);
+  renderCoverNow(snap);   // morning-editor "what to cover now"
   renderMovers(snap);     // morning-editor "what already surged" — paired with cover-now
   renderLopsided(snap);   // replicable wins — articles big on one platform, pushable to another
-  renderBoard(snap);
-  renderLeaders(snap);
-  renderUsage(snap);
+  renderBoard(snap);      // source board — index only (guarded)
+  renderLeaders(snap);    // editorial leaders — index only (guarded)
+  renderUsage(snap);      // usage panel — index only (guarded)
 }
 
 async function boot() {
   let snap;
   try { snap = await PB.loadSnapshot(); }
   catch (e) {
-    document.getElementById('dash-loading').innerHTML =
+    // surface the error in whichever "Loading…" placeholder this page carries (index or ideas).
+    const loading = document.getElementById('dash-loading') || document.getElementById('ideas-loading');
+    if (loading) loading.innerHTML =
       '<span class="src-err">Could not load live snapshot (' + PB.esc(e.message) + ').</span>';
     return;
   }

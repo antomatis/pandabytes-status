@@ -128,6 +128,10 @@ nav.top a.active { background: var(--accent-soft); color: var(--accent-deep); }
   font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--fg-dim);
   line-height: 1.1; }
 .hub-pulse.is-loading { opacity: .55; }
+/* the pill ships [hidden] and is revealed by JS once populated (index: the health
+   summary; ideas: the standalone freshness stamp). The author `display` above would
+   otherwise override the UA [hidden] rule, flashing an empty pill before JS runs. */
+.hub-pulse[hidden] { display: none; }
 /* overall verdict word ("All fresh" / "Attention") leads the chip */
 .hub-pulse .pulse-verdict { font-weight: 800; color: var(--fg-strong);
   letter-spacing: -.01em; }
