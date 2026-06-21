@@ -705,6 +705,38 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .ef-cat { margin-left: 0; margin-top: 3px; }
 }
 
+/* ---- "What competitors are winning" — MSN/AOL top-stories leaderboard ----
+   Reuses the .lead-* table chrome (card/table/rank/name/bar-meter) so it reads as a sibling
+   of Efficiency MVPs. The Story cell stacks an outlet badge + linked headline (+ a category
+   chip where the source URL maps cleanly) over a quiet publisher line; the name cell WRAPS
+   here (multi-line headlines) rather than truncating. Single full-width card. */
+.competitors-panel { display: block; }
+.competitors-panel .lead-card { max-width: 720px; }
+/* the Story cell holds wrapping multi-line content, so override the single-line .lead-name. */
+.competitors-panel .lead-name {
+  white-space: normal; max-width: none; width: auto; line-height: 1.4;
+  padding-top: 9px; padding-bottom: 9px;
+}
+.cw-title {
+  color: var(--fg-strong); font-weight: 600; text-decoration: none;
+}
+.cw-title:hover { text-decoration: underline; }
+/* outlet badge — a small MSN/AOL pill leading the headline. */
+.cw-outlet {
+  display: inline-block; margin-right: 7px; padding: 1px 7px;
+  font-size: 10px; font-weight: 800; letter-spacing: .03em;
+  border-radius: 999px; vertical-align: middle; white-space: nowrap;
+}
+.cw-out-msn { color: var(--teal); background: var(--teal-soft); }
+.cw-out-aol { color: var(--fg-quiet); background: var(--surface-2); border: 1px solid var(--border-soft); }
+/* quiet publisher line under the headline. */
+.cw-pub {
+  margin-top: 3px; font-size: 11px; font-weight: 400; color: var(--fg-quiet);
+}
+@media (max-width: 560px) {
+  .competitors-panel .lead-card { max-width: 100%; }
+}
+
 /* ---- "Cover now" — today's actionable coverage opportunities ----
    The morning-editor read, ABOVE the source board. A compact, scannable card list of the
    specific fresh on-brand viral posts BP hasn't covered, ranked by upvote velocity. Built

@@ -803,6 +803,84 @@ function renderEfficiency(snap) {
   sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
 }
 
+/* ---- "What competitors are winning" — top MSN + AOL stories this week --------------
+   The first cross-source pivot to surface the competitor MSN/AOL layer (warehoused in the
+   hub but never joined onto the dashboard — every prior cross-source widget was reddit×GA4
+   or articles×GA4). Reads snapshot.competitor_winners: the top N competitor stories of the
+   last 7d, MSN + AOL UNIONed and ranked by engagement (MSN = reactions+comments; AOL =
+   comments only, which the row carries honestly), each with its outlet, a category tag where
+   the source URL gives one cheaply (MSN; AOL slugs carry none), the engagement count, and a
+   link to the story — so a BP editor sees what rivals are WINNING that BP could own. Reuses
+   the .lead-* leaderboard table chrome (sibling of Efficiency MVPs). Purely additive +
+   self-hiding: an absent/empty block leaves the section hidden, so the five existing pivots
+   widgets are never affected. Honest by construction — carries the data's own caveat (which
+   engagement metric per outlet; no fuzzy "we don't cover this" gap match) as a quiet
+   footnote, like the others. */
+function competitorRow(s, rank, max) {
+  const eng = (s.engagement != null) ? s.engagement : 0;
+  const pct = Math.max(2, (eng / max) * 100);   // bar-meter relative to the top row
+  // outlet badge: a tiny MSN/AOL chip so the editor reads the source at a glance.
+  const oc = (String(s.outlet || '').toLowerCase() === 'aol') ? 'cw-out-aol' : 'cw-out-msn';
+  const outlet = '<span class="cw-outlet ' + oc + '">' + PB.esc(s.outlet || '?') + '</span>';
+  // category chip (MSN only / where the URL maps cleanly); AOL & unmapped rows show none.
+  const cat = s.category
+    ? '<span class="ef-cat" title="this story’s section on the competitor site">' + PB.esc(s.category) + '</span>'
+    : '';
+  const titleTxt = PB.esc(s.title || '(untitled)');
+  // title links out to the competitor story when a resolvable URL is present.
+  const title = s.url
+    ? '<a class="cw-title" href="' + PB.esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + titleTxt + '</a>'
+    : '<span class="cw-title">' + titleTxt + '</span>';
+  const pub = s.publisher
+    ? '<div class="cw-pub" title="originating publisher">' + PB.esc(s.publisher) + '</div>' : '';
+  // metric label: MSN carries reactions+comments; AOL is comments-only — name it honestly.
+  const engTitle = (String(s.outlet || '').toLowerCase() === 'aol')
+    ? 'AOL comments (AOL exposes no reaction count)'
+    : 'MSN reactions + comments';
+  return '<tr>' +
+    '<td class="lead-rank">' + (rank != null ? rank : '') + '</td>' +
+    '<td class="lead-name">' + outlet + title + cat + pub + '</td>' +
+    '<td class="lead-pv">' +
+      '<span class="lead-bar" style="width:' + pct.toFixed(1) + '%" aria-hidden="true"></span>' +
+      '<span class="lead-pv-n" title="' + engTitle + '">' + PB.fmtInt(eng) + '</span>' +
+    '</td>' +
+  '</tr>';
+}
+
+function renderCompetitors(snap) {
+  const sect  = document.getElementById('competitors-section');
+  const panel = document.getElementById('competitors-panel');
+  if (!sect || !panel) return;   // guard: no-op on pages without this section
+  const cw = snap.competitor_winners;
+  const stories = (cw && Array.isArray(cw.stories)) ? cw.stories : [];
+  if (!stories.length) { sect.hidden = true; return; }   // self-hide (older snapshot / none)
+
+  // already ranked server-side by engagement desc; bar-meter relative to the top row.
+  const max = Math.max(1, stories[0].engagement || 0);
+  const rows = stories.map(function (s, i) { return competitorRow(s, i + 1, max); }).join('');
+
+  const cap = document.getElementById('competitors-window');
+  if (cap) {
+    const days = cw && cw.days;
+    cap.textContent = days
+      ? ('— top MSN & AOL stories · last ' + days + ' days · by engagement')
+      : '— top MSN & AOL stories this week · by engagement';
+  }
+
+  const caveat = (cw && cw.caveat)
+    ? '<div class="lead-foot">' + PB.esc(cw.caveat) + '</div>' : '';
+  panel.innerHTML =
+    '<div class="lead-card">' +
+      '<div class="lead-card-title">What competitors are winning — MSN &amp; AOL top stories</div>' +
+      '<table class="lead-table"><thead><tr>' +
+        '<th class="lead-rank"></th>' +
+        '<th class="lead-name">Story</th>' +
+        '<th class="lead-pv">Engagement</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
+}
+
 /* ---- hub "pulse": at-a-glance health summary ----
    Derived from the SAME snapshot the board already loaded (no extra fetch). Buckets
    every source into one calm category, honoring flow-state so a deliberate pause/frozen
@@ -927,6 +1005,7 @@ function renderAll(snap) {
   renderBoard(snap);      // source board — index only (guarded)
   renderLeaders(snap);    // editorial leaders — index only (guarded)
   renderEfficiency(snap); // efficiency MVPs — engaged-sessions/article (pivots only, guarded)
+  renderCompetitors(snap);// competitor winners — top MSN/AOL stories (pivots only, guarded)
   renderUsage(snap);      // usage panel — index only (guarded)
 }
 

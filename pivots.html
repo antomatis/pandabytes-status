@@ -101,6 +101,19 @@
       <div id="efficiency-panel" class="efficiency-panel"></div>
     </section>
 
+    <!-- "What competitors are winning": the FIRST cross-source pivot to surface the competitor
+         MSN/AOL layer (warehoused but never joined onto the dashboard). Top competitor stories
+         this week ranked by engagement (MSN reactions+comments / AOL comments), so a BP editor
+         sees what MSN/AOL is winning in the native market that BP could own. Populated by
+         renderCompetitors() from snapshot.competitor_winners; self-hides when the block is
+         absent/empty (older snapshot / none). -->
+    <section id="competitors-section" hidden>
+      <div class="section-title" style="margin-top:32px">What competitors are winning
+        <span class="muted" id="competitors-window">— top MSN &amp; AOL stories this week · by engagement</span>
+      </div>
+      <div id="competitors-panel" class="competitors-panel"></div>
+    </section>
+
     <div id="ideas-loading" class="loading">Loading snapshot…</div>
 
     <p class="tip" style="margin-top:14px">
