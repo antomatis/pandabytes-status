@@ -174,6 +174,20 @@
           <div id="competitors-panel" class="competitors-panel"></div>
         </section>
 
+        <!-- "Where to beat them": the ACTIONABLE sibling of "What competitors are winning". Where
+             that widget reads what rivals DID, this reads where to WRITE — topic buckets where
+             competitors pile up engagement but BoredPanda's recent coverage is thin (the
+             coverage gap = the opportunity). Ranked by opportunity_score (competitor engagement ÷
+             BP 90-day coverage). Populated by renderOpportunities() from
+             snapshot.competitor_opportunities (the proven v_competitor_opportunities view);
+             self-hides when the block is absent/empty (older snapshot / none). -->
+        <section id="opportunities-section" hidden>
+          <div class="section-title">Where to beat them
+            <span class="muted" id="opportunities-window">— topics rivals win that BoredPanda under-covers · ranked by opportunity</span>
+          </div>
+          <div id="opportunities-panel" class="opportunities-panel"></div>
+        </section>
+
       </div>
     </section>
 

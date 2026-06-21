@@ -814,6 +814,50 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .competitors-panel .lead-card { max-width: 100%; }
 }
 
+/* ---- "Where to beat them" — competitor OPPORTUNITY gaps (actionable sibling) ----
+   Reuses the .lead-* table chrome (card/table/rank/name/bar-meter) so it reads as a sibling of
+   "What competitors are winning" directly above it. The topic cell stacks a topic name + a
+   coverage-gap chip over the BP article count + a quiet example story; the name cell WRAPS here
+   (multi-line) like the competitors widget. The coverage chip uses the page's warm "do this"
+   accent for ABSENT/THIN (the opportunity) and quiet teal for WELL-COVERED (no gap), echoing
+   the Cover-now accent rail so the two actionable surfaces read as a family. */
+.opportunities-panel { display: block; }
+.opportunities-panel .lead-card { max-width: 760px; }
+/* the Topic cell holds wrapping multi-line content, so override the single-line .lead-name. */
+.opportunities-panel .lead-name {
+  white-space: normal; max-width: none; width: auto; line-height: 1.4;
+  padding-top: 9px; padding-bottom: 9px;
+}
+.co-bucket { color: var(--fg-strong); font-weight: 700; margin-right: 8px; }
+/* coverage-gap chip — the at-a-glance "how thin is BP here" signal. */
+.co-cov {
+  display: inline-block; padding: 1px 7px;
+  font-size: 10px; font-weight: 800; letter-spacing: .02em;
+  border-radius: 999px; vertical-align: middle; white-space: nowrap;
+}
+.co-cov-absent { color: #fff; background: var(--accent); }                 /* biggest gap → strongest */
+.co-cov-thin   { color: var(--accent-deep); background: var(--accent-soft); border: 1px solid #f4c9b6; }
+.co-cov-mid    { color: var(--fg-quiet); background: var(--surface-2); border: 1px solid var(--border-soft); }
+.co-cov-well   { color: var(--teal); background: var(--teal-soft); }       /* well-covered → no gap (quiet) */
+/* BP article count under the topic, then a quiet example competitor story. */
+.co-arts { margin-top: 4px; font-size: 11px; font-weight: 400; color: var(--fg-quiet); }
+.co-ex {
+  margin-top: 3px; font-size: 11px; font-weight: 400; color: var(--fg-quiet);
+  line-height: 1.35; max-width: 480px;
+}
+.co-ex-q { color: var(--fg-faint); font-style: italic; }
+.co-ex-pub { color: var(--fg-faint); }
+/* the opportunity score — the ranking number, right-aligned + tabular like .lead-eng. */
+.co-score {
+  color: var(--accent-deep); font-weight: 700; font-size: 12px;
+  min-width: 56px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.lead-table th.co-score { text-align: right; }
+@media (max-width: 560px) {
+  .opportunities-panel .lead-card { max-width: 100%; }
+  .co-ex { max-width: 100%; }
+}
+
 /* ---- "Cover now" — today's actionable coverage opportunities ----
    The morning-editor read, ABOVE the source board. A compact, scannable card list of the
    specific fresh on-brand viral posts BP hasn't covered, ranked by upvote velocity. Built

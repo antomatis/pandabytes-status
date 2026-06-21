@@ -939,6 +939,105 @@ function renderCompetitors(snap) {
   sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
 }
 
+/* ---- "Where to beat them" — competitor OPPORTUNITIES (the actionable sibling) -------
+   The prescriptive complement to "What competitors are winning": where that widget reads
+   what rivals DID, this reads where an editor should WRITE — topic buckets where competitors
+   pile up engagement but BoredPanda's recent coverage is thin. Reads
+   snapshot.competitor_opportunities (the proven v_competitor_opportunities view): one row per
+   topic_bucket, ranked by opportunity_score (competitor engagement ÷ BP 90-day coverage). Each
+   row shows the topic, the competitor engagement signal, the BP coverage level (the gap), and
+   the score. Reuses the .lead-* table chrome (sibling of "What competitors are winning") and
+   the SAME slug display-fix (cwPrettyTitle / cwPrettyPublisher) the competitor headlines use —
+   the example title is a slug decode from the same warehouse. Self-hiding: an absent/empty
+   block leaves the <section> hidden, so older snapshots never break the layout. */
+// topic_bucket arrives as a snake_case warehouse key ('health_wellness', 'film_tv',
+// 'entertainment_other'). Map the handful of buckets to clean editorial labels; fall back to a
+// generic underscore→space Title-Case for any new bucket so an added bucket never shows raw.
+function coBucketLabel(b) {
+  const map = {
+    autos: 'Autos', celebrity: 'Celebrity', entertainment_other: 'Entertainment',
+    film_tv: 'Film & TV', food: 'Food', health_wellness: 'Health & Wellness',
+    lifestyle: 'Lifestyle', travel: 'Travel', music: 'Music', animals: 'Animals',
+  };
+  const key = String(b || '').toLowerCase();
+  if (map[key]) return map[key];
+  return key ? cwTitleCase(key.replace(/_/g, ' ')) : '(uncategorised)';
+}
+// coverage label → a tiny semantic chip class so the GAP (the opportunity) reads at a glance:
+// ABSENT/THIN = the opportunity (warm), WELL-COVERED = no gap (cool).
+function coCoverageChip(cov) {
+  const c = String(cov || '').toUpperCase();
+  let cls = 'co-cov-mid';
+  if (c.startsWith('ABSENT')) cls = 'co-cov-absent';
+  else if (c.startsWith('THIN')) cls = 'co-cov-thin';
+  else if (c.startsWith('WELL')) cls = 'co-cov-well';
+  return '<span class="co-cov ' + cls + '" title="BoredPanda articles in this topic over the last 90 days">'
+    + PB.esc(cov || '—') + '</span>';
+}
+
+function opportunityRow(o, max) {
+  const score = (o.opportunity_score != null) ? o.opportunity_score : 0;
+  const pct = Math.max(2, (score / max) * 100);   // bar-meter relative to the top row
+  const bucket = '<span class="co-bucket">' + PB.esc(coBucketLabel(o.topic_bucket)) + '</span>';
+  const cov = coCoverageChip(o.bp_coverage);
+  // competitor engagement signal: reactions + comments over the warehoused window. Shown as the
+  // "what they're getting" line; the example article (slug-decoded, display-fixed) gives a
+  // concrete read of what's winning in the bucket.
+  const eng = (o.competitor_reactions || 0) + (o.competitor_comments || 0);
+  const exTitle = o.example_title ? cwPrettyTitle(o.example_title) : '';
+  const exPub = cwPrettyPublisher(o.example_publisher);
+  const example = exTitle
+    ? '<div class="co-ex" title="the top competitor story in this topic">' +
+        '<span class="co-ex-q">e.g.</span> ' + PB.esc(exTitle) +
+        (exPub ? ' <span class="co-ex-pub">· ' + PB.esc(exPub) + '</span>' : '') +
+      '</div>'
+    : '';
+  const artLabel = (o.bp_articles_90d != null)
+    ? (o.bp_articles_90d + ' BP article' + (o.bp_articles_90d === 1 ? '' : 's') + ' · 90d')
+    : '';
+  return '<tr>' +
+    '<td class="lead-rank">' + (o.rank != null ? o.rank : '') + '</td>' +
+    '<td class="lead-name">' + bucket + cov +
+      '<div class="co-arts" title="BoredPanda articles published in this topic in the last 90 days">' +
+        PB.esc(artLabel) + '</div>' + example +
+    '</td>' +
+    '<td class="lead-pv co-eng">' +
+      '<span class="lead-bar" style="width:' + pct.toFixed(1) + '%" aria-hidden="true"></span>' +
+      '<span class="lead-pv-n" title="competitor engagement (reactions + comments) in this topic">' +
+        PB.fmtInt(eng) + '</span>' +
+    '</td>' +
+    '<td class="co-score" title="opportunity score = competitor engagement ÷ BP 90-day coverage — higher means a bigger gap to fill">' +
+      PB.fmtInt(Math.round(score)) + '</td>' +
+  '</tr>';
+}
+
+function renderOpportunities(snap) {
+  const sect  = document.getElementById('opportunities-section');
+  const panel = document.getElementById('opportunities-panel');
+  if (!sect || !panel) return;   // guard: no-op on pages without this section
+  const co = snap.competitor_opportunities;
+  const rows0 = (co && Array.isArray(co.opportunities)) ? co.opportunities : [];
+  if (!rows0.length) { sect.hidden = true; return; }   // self-hide (older snapshot / none)
+
+  // already ranked server-side by opportunity_score desc; bar-meter relative to the top engagement.
+  const maxScore = Math.max(1, rows0[0].opportunity_score || 0);
+  const rows = rows0.map(function (o) { return opportunityRow(o, maxScore); }).join('');
+
+  const caveat = (co && co.caveat)
+    ? '<div class="lead-foot">' + PB.esc(co.caveat) + '</div>' : '';
+  panel.innerHTML =
+    '<div class="lead-card">' +
+      '<div class="lead-card-title">Where to beat them — topics rivals win that BP under-covers</div>' +
+      '<table class="lead-table"><thead><tr>' +
+        '<th class="lead-rank"></th>' +
+        '<th class="lead-name">Topic &amp; coverage gap</th>' +
+        '<th class="lead-pv">Competitor engagement</th>' +
+        '<th class="co-score">Score</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '</div>' + caveat;
+  sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
+}
+
 /* ---- Pivots page: 3 labeled, collapsible sections + sticky sub-nav ----------------
    The six pivots widgets are grouped into three labeled sections on pivots.html:
      🔴 Act now          (cover-now + movers)        — always open
@@ -1133,6 +1232,7 @@ function renderAll(snap) {
   renderLeaders(snap);    // editorial leaders — index only (guarded)
   renderEfficiency(snap); // efficiency MVPs — engaged-sessions/article (pivots only, guarded)
   renderCompetitors(snap);// competitor winners — top MSN/AOL stories (pivots only, guarded)
+  renderOpportunities(snap);// "where to beat them" — competitor opportunity gaps (pivots only, guarded)
   renderUsage(snap);      // usage panel — index only (guarded)
   wirePivots();           // pivots 3-section collapse + sub-nav + group self-hide (pivots only, guarded)
 }
