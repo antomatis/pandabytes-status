@@ -204,6 +204,71 @@ button:disabled { opacity: .5; cursor: default; }
 /* land group anchors below the sticky site header (52px) for any direct #grp- deep-link */
 .group[id] { scroll-margin-top: 64px; }
 
+/* ════ Pivots page: sticky in-page sub-nav + 3 labeled collapsible sections ════════════
+   The six pivots widgets are organised into three labeled sections (Act now · Our
+   performance · Competitive intel). The sub-nav is a thin sticky band that jumps to each;
+   the section chrome REUSES the source-board collapse grammar (a header that toggles a
+   .collapsed class, rotating a caret) so it reads as the same affordance the editor already
+   knows — only the class names differ (.pv-* vs the board's .g-*) so the two never collide. */
+
+/* sub-nav: a thin sticky band of pill links, mirroring nav.top a. Sticks just under the
+   (sticky, ~52px) site header. Quiet surface wash, no shout — a wayfinding aid, not chrome. */
+.pv-subnav {
+  position: sticky; top: 52px; z-index: 20;
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  margin: 10px 0 4px; padding: 7px 0;
+  background: var(--page);           /* match the page wash so content scrolls cleanly under it */
+  border-bottom: 1px solid var(--border-soft);
+}
+.pv-subnav a {
+  padding: 5px 13px; border-radius: var(--radius-sm);
+  color: var(--fg-dim); font-weight: 600; font-size: 13px;
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.pv-subnav a:hover { background: var(--surface); color: var(--fg); text-decoration: none;
+  border-color: var(--border); }
+
+/* one pivots section — same card shell as the board's .group */
+.pv-group { background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  transition: box-shadow .15s ease; margin-bottom: 14px; }
+.pv-group:hover { box-shadow: var(--shadow-lg); }
+/* land a section's #anchor below BOTH sticky bars (site header 52px + sub-nav ~40px) */
+.pv-group[id] { scroll-margin-top: 104px; }
+
+/* section header — same grammar as .g-head (role=button, caret rotates when collapsed) */
+.pv-ghead { display: flex; align-items: center; gap: 9px; padding: 14px 18px; cursor: pointer;
+  user-select: none; background: var(--surface); transition: background .12s ease; }
+.pv-ghead:hover { background: var(--surface-2); }
+.pv-ghead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pv-caret { color: var(--fg-quiet); font-size: 11px; width: 12px; flex: none;
+  transition: transform .15s ease; }
+.pv-group.collapsed .pv-caret { transform: rotate(-90deg); }
+.pv-emoji { font-size: 14px; line-height: 1; flex: none; }
+.pv-glabel { font-weight: 700; font-size: 16px; color: var(--fg-strong); letter-spacing: -.01em; }
+.pv-gsub { color: var(--fg-faint); font-weight: 500; font-size: 13px; }
+
+/* section body: the widgets live here; hidden when the section is collapsed. The inner
+   widget <section>s keep their own .section-title spacing, but the FIRST one shouldn't add
+   the big top margin inside the card (the card header already provides the gap). */
+.pv-gbody { display: block; padding: 4px 18px 18px; }
+.pv-group.collapsed .pv-gbody { display: none; }
+.pv-gbody > section:first-child .section-title,
+.pv-gbody .pv-two-up > section:first-child .section-title { margin-top: 14px; }
+
+/* Editorial leaders + Efficiency MVPs side-by-side: 2-col on desktop, stacks on mobile.
+   Both children are full-width single-card panels, so cap their max-width inside the column
+   to 100% (they default to 640/720px standalone). */
+.pv-two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.pv-two-up > section { min-width: 0; }   /* let the table cells shrink instead of overflowing */
+.pv-two-up .efficiency-panel .lead-card,
+.pv-two-up .leaders-panel { max-width: 100%; }
+.pv-two-up .leaders-panel { grid-template-columns: 1fr; }  /* the two leader cards stack within their half */
+@media (max-width: 760px) {
+  .pv-two-up { grid-template-columns: 1fr; }   /* stack the two author tables on mobile */
+}
+
 /* ---- grouped board ---- */
 .board { display: flex; flex-direction: column; gap: 14px; }
 
@@ -540,6 +605,13 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
   .f-spark .spark-cap { text-align: left; }
   .g-rollup { margin-left: 0; width: 100%; }
   .g-head { flex-wrap: wrap; }
+  /* On mobile the site header wraps to ~2 lines (brand + nav), so it's taller than the
+     52px the sub-nav sticks under — pinning the sub-nav would overlap content. Make it
+     static near the top of the scroll instead (it's thin + sits just below the H1). */
+  .pv-subnav { position: static; top: auto; }
+  .pv-glabel { font-size: 15px; }
+  .pv-ghead { gap: 8px; padding: 13px 14px; }
+  .pv-gbody { padding: 2px 12px 14px; }
   nav.top { width: 100%; margin-left: 0; }
   .brand { width: 100%; }
   /* pulse chip drops to its own full-width line under the wordmark on mobile,
@@ -688,11 +760,16 @@ footer.site { border-top: 1px solid var(--border); color: var(--fg-faint); font-
 /* the author's winning lane, a small inline chip after the name (quiet, not a second column
    so it survives the mobile name truncation gracefully — wraps under the name on narrow). */
 .ef-cat {
-  display: inline-block; margin-left: 8px; padding: 1px 7px;
+  display: inline-block; margin-left: 10px; padding: 1px 7px;
   font-size: 10px; font-weight: 700; letter-spacing: .02em;
   color: var(--teal); background: var(--teal-soft);
   border-radius: 999px; vertical-align: middle; white-space: nowrap;
 }
+/* In the Efficiency MVPs table the author name + its category chip share one .lead-name
+   cell. The base .lead-name clips overflow (single-line ellipsis), which jammed/clipped the
+   chip when the name was long. Let the chip's left margin always read by allowing the cell to
+   wrap (name + chip) instead of hard-truncating, so the two never run together. */
+.efficiency-panel .lead-name { white-space: normal; overflow: visible; }
 /* caveat footnote — same quiet-footnote grammar as cover-now / movers / lopsided. */
 .lead-foot {
   font-size: 11px; color: var(--fg-quiet); line-height: 1.45;

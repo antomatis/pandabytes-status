@@ -796,7 +796,7 @@ function renderEfficiency(snap) {
         '<th class="lead-rank"></th>' +
         '<th class="lead-name">Author</th>' +
         '<th class="lead-arts">Articles</th>' +
-        '<th class="lead-pv">Eng/article</th>' +
+        '<th class="lead-pv" title="GA4 engaged sessions per article published in the window">Eng. sessions / article</th>' +
         '<th class="lead-eng" title="total engaged sessions over the window">Total&nbsp;eng.</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
     '</div>' + caveat;
@@ -816,6 +816,61 @@ function renderEfficiency(snap) {
    widgets are never affected. Honest by construction — carries the data's own caveat (which
    engagement metric per outlet; no fuzzy "we don't cover this" gap match) as a quiet
    footnote, like the others. */
+// Competitor headlines arrive as URL-slug decodes (the MSN/AOL warehouse carries NO clean
+// headline field anywhere — title/syndicated_title/example_title are all slug-derived), so
+// they're all-lowercase with apostrophes dropped ("the trump administration … here s what …").
+// This is a DISPLAY fix only (no query change → snapshot stays light): restore the common
+// contraction apostrophes a slug strips, then Title Case. Best-effort + honest — we never
+// invent words, only re-case + re-punctuate what the slug already says.
+function cwRestoreApostrophes(t) {
+  // common contractions a URL slug loses (the apostrophe + a following letter become a space):
+  // "here s" -> "here's", "you re" -> "you're", "don t" -> "don't", "we d" -> "we'd", etc.
+  // \b…\b keeps it from mangling real words; applied case-insensitively pre-title-casing.
+  return t
+    .replace(/\b(\w+) s\b/gi, "$1's")                       // possessive / "here's", "it's", "that's"
+    .replace(/\b(\w+) (re|ve|ll|d|t|m)\b/gi, "$1'$2")       // you're, we've, we'll, we'd, don't, I'm
+    // the "n t" split ("doesn t" -> "doesn't") — handled by the (…)(t) rule above as "doesn't".
+    .replace(/\bo (clock)\b/gi, "o'$1");                    // o'clock
+}
+// lightweight Title Case: capitalise each word's first letter, but keep short function words
+// (a/an/the/of/and/…) lowercase UNLESS they lead the title. Apostrophes/hyphens preserved.
+function cwTitleCase(t) {
+  const small = new Set(['a','an','and','as','at','but','by','for','from','in','into','nor',
+    'of','on','onto','or','per','the','to','vs','via','with']);
+  const words = String(t).split(/(\s+)/);   // keep the whitespace tokens to rejoin verbatim
+  let wi = 0;
+  return words.map(tok => {
+    if (/^\s+$/.test(tok) || tok === '') return tok;
+    const isFirst = wi === 0;
+    wi++;
+    const lower = tok.toLowerCase();
+    if (!isFirst && small.has(lower)) return lower;
+    // capitalise the first alpha char (skips a leading quote/paren); leave the rest as-is
+    // so an existing ALLCAPS acronym from the slug isn't relevant (slugs are all-lower anyway).
+    return lower.replace(/[a-z]/, c => c.toUpperCase());
+  }).join('');
+}
+function cwPrettyTitle(t) {
+  const raw = String(t || '').trim();
+  if (!raw) return '(untitled)';
+  // strip the snapshot's truncation ellipsis before processing, re-append after.
+  const trunc = /\.\.\.$/.test(raw);
+  const core = trunc ? raw.replace(/\s*\.\.\.$/, '') : raw;
+  return cwTitleCase(cwRestoreApostrophes(core)) + (trunc ? '…' : '');
+}
+// Publisher display: drop the no-information "(unknown)" sentinel entirely (match the
+// no-fuzzy-guess policy — show nothing rather than a guess). Title-Case ONLY a bare
+// all-lowercase name ("parade" -> "Parade", an AOL slug-derived publisher); leave names
+// that already carry case ("HuffPost", "USA TODAY", "MarketWatch") untouched — re-casing
+// those would corrupt them ("Huffpost" / "Usa Today").
+function cwPrettyPublisher(p) {
+  const raw = String(p || '').trim();
+  if (!raw || raw.toLowerCase() === '(unknown)' || raw.toLowerCase() === 'unknown') return '';
+  // already has an uppercase letter → trust the source casing as-is.
+  if (/[A-Z]/.test(raw)) return raw;
+  return cwTitleCase(raw);
+}
+
 function competitorRow(s, rank, max) {
   const eng = (s.engagement != null) ? s.engagement : 0;
   const pct = Math.max(2, (eng / max) * 100);   // bar-meter relative to the top row
@@ -826,13 +881,16 @@ function competitorRow(s, rank, max) {
   const cat = s.category
     ? '<span class="ef-cat" title="this story’s section on the competitor site">' + PB.esc(s.category) + '</span>'
     : '';
-  const titleTxt = PB.esc(s.title || '(untitled)');
+  // DISPLAY-FIX the slug-derived headline: restore apostrophes + Title Case (no real
+  // headline field exists in the warehouse to join to — see cwPrettyTitle).
+  const titleTxt = PB.esc(cwPrettyTitle(s.title));
   // title links out to the competitor story when a resolvable URL is present.
   const title = s.url
     ? '<a class="cw-title" href="' + PB.esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + titleTxt + '</a>'
     : '<span class="cw-title">' + titleTxt + '</span>';
-  const pub = s.publisher
-    ? '<div class="cw-pub" title="originating publisher">' + PB.esc(s.publisher) + '</div>' : '';
+  const pubTxt = cwPrettyPublisher(s.publisher);   // '' for "(unknown)"/AOL → no line shown
+  const pub = pubTxt
+    ? '<div class="cw-pub" title="originating publisher">' + PB.esc(pubTxt) + '</div>' : '';
   // metric label: MSN carries reactions+comments; AOL is comments-only — name it honestly.
   const engTitle = (String(s.outlet || '').toLowerCase() === 'aol')
     ? 'AOL comments (AOL exposes no reaction count)'
@@ -879,6 +937,75 @@ function renderCompetitors(snap) {
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
     '</div>' + caveat;
   sect.hidden = false;   // reveal once populated (the section ships hidden in pivots.html)
+}
+
+/* ---- Pivots page: 3 labeled, collapsible sections + sticky sub-nav ----------------
+   The six pivots widgets are grouped into three labeled sections on pivots.html:
+     🔴 Act now          (cover-now + movers)        — always open
+     🟢 Our performance  (lopsided + leaders + eff.) — collapsible
+     🔵 Competitive intel(competitors)               — collapsible
+   This reuses the source-board's collapse GRAMMAR (a header role=button that toggles a
+   `.collapsed` class on the section, rotating a caret) rather than inventing a new one —
+   here the classes are .pv-group / .pv-ghead / .pv-gbody (mirrors .group / .g-head /
+   .g-body) so pivots can't disturb the board's own collapse state set.
+
+   Two extra behaviours layer on top:
+     1) GROUP SELF-HIDE — each widget's renderer already self-hides its own <section> when
+        its snapshot block is empty. wirePivots() then hides a WHOLE group when every widget
+        inside it is hidden, so an empty section header never shows (mirrors the widgets'
+        own "nothing to surface today → stay hidden" honesty). The group's collapsed state
+        is otherwise left exactly as authored (Act now open; the other two collapsed).
+     2) SUB-NAV — the sticky in-page nav's anchors jump to a section; if that section is
+        collapsed we expand it first so the jump lands on content, not a closed header. */
+function pivotsToggle(sec, collapse) {
+  const want = (collapse == null) ? !sec.classList.contains('collapsed') : !!collapse;
+  sec.classList.toggle('collapsed', want);
+  const head = sec.querySelector('.pv-ghead');
+  if (head) head.setAttribute('aria-expanded', want ? 'false' : 'true');
+}
+
+let pivotsWired = false;
+function wirePivots() {
+  const groups = document.querySelectorAll('.pv-group');
+  if (!groups.length) return;   // no-op on pages without the pivots sections (index/ideas)
+
+  // (1) self-hide a group whose every widget <section> is hidden/empty; reveal it otherwise.
+  groups.forEach(sec => {
+    const widgets = sec.querySelectorAll('.pv-gbody > section, .pv-gbody .pv-two-up > section');
+    const anyShown = [...widgets].some(w => !w.hidden);
+    sec.hidden = !anyShown;
+  });
+
+  if (pivotsWired) return;      // listeners bind once; the self-hide above re-runs each render
+  pivotsWired = true;
+
+  // (2) header collapse/expand — same grammar as the board's .g-head (click + Enter/Space).
+  groups.forEach(sec => {
+    const head = sec.querySelector('.pv-ghead');
+    if (!head) return;
+    const toggle = () => pivotsToggle(sec);
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
+
+  // (3) sticky sub-nav: jump to a section, expanding it first if collapsed so the jump
+  // lands on its content (smooth scroll comes from html{scroll-behavior:smooth}).
+  document.querySelectorAll('.pv-subnav a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href').slice(1);
+      const target = document.getElementById(id);
+      if (!target) return;             // let the browser handle a stray anchor
+      e.preventDefault();
+      if (target.classList.contains('pv-group')) pivotsToggle(target, false);  // expand
+      // defer the scroll one frame so the just-expanded body has laid out.
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', '#' + id);
+      });
+    });
+  });
 }
 
 /* ---- hub "pulse": at-a-glance health summary ----
@@ -1007,6 +1134,7 @@ function renderAll(snap) {
   renderEfficiency(snap); // efficiency MVPs — engaged-sessions/article (pivots only, guarded)
   renderCompetitors(snap);// competitor winners — top MSN/AOL stories (pivots only, guarded)
   renderUsage(snap);      // usage panel — index only (guarded)
+  wirePivots();           // pivots 3-section collapse + sub-nav + group self-hide (pivots only, guarded)
 }
 
 async function boot() {
